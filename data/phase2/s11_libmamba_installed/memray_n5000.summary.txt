@@ -1,0 +1,46 @@
+
+⚠  No symbol information was found for the Python interpreter  ⚠
+
+Without symbolic information reports showing native traces may not accurately 
+reflect stack traces. Please use an interpreter built with debug symbols for 
+best results. Check https://bloomberg.github.io/memray/native_mode.html for more
+information regarding how memray resolves symbols.
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃                                     ┃        ┃ Total ┃       ┃   Own ┃       ┃
+┃                                     ┃ <Total ┃ Memo… ┃   Own ┃ Memo… ┃ Allo… ┃
+┃ Location                            ┃ Memor… ┃     % ┃ Memo… ┃     % ┃ Count ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ _solver_state at                    │ 37.19… │ 98.1… │ 0.00… │ 0.00% │ 17810 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ register_memray at                  │ 37.19… │ 98.1… │ 0.00… │ 0.00% │ 17810 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ main at                             │ 37.19… │ 98.1… │ 0.00… │ 0.00% │ 17810 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ _PyObject_Malloc at <unknown>       │ 35.25… │ 93.0… │ 7.98… │ 21.0… │  5865 │
+│ _PyMem_ArenaAlloc at <unknown>      │ 28.32… │ 74.7… │ 28.3… │ 74.7… │    28 │
+│ new_arena at <unknown>              │ 28.31… │ 74.7… │ 3.07… │ 0.01% │    28 │
+│ allocate_from_new_pool at <unknown> │ 28.31… │ 74.7… │ 0.00… │ 0.00% │    28 │
+│ PyObject_Vectorcall at <unknown>    │ 24.86… │ 65.6… │ 0.00… │ 0.00% │ 14596 │
+│ _PyObject_MakeTpCall at <unknown>   │ 23.00… │ 60.7… │ 0.00… │ 0.00% │ 12774 │
+│ cfunction_vectorcall_FASTCALL_KEYW… │ 22.75… │ 60.0… │ 0.00… │ 0.00% │ 17790 │
+│ at <unknown>                        │        │       │       │       │       │
+│ type_call at <unknown>              │ 22.57… │ 59.5… │ 0.00… │ 0.00% │ 12649 │
+│ _PyObject_VectorcallDictTstate at   │ 22.51… │ 59.4… │ 0.00… │ 0.00% │ 12594 │
+│ <unknown>                           │        │       │       │       │       │
+│ exec_module at <frozen              │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17787 │
+│ importlib._bootstrap_external>      │        │       │       │       │       │
+│ _load_unlocked at <frozen           │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17787 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load_unlocked at <frozen  │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17787 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load at <frozen           │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17787 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ object_vacall at <unknown>          │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17786 │
+│ PyObject_CallMethodObjArgs at       │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17786 │
+│ <unknown>                           │        │       │       │       │       │
+│ import_find_and_load at <unknown>   │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17786 │
+│ PyImport_ImportModuleLevelObject at │ 20.65… │ 54.5… │ 0.00… │ 0.00% │ 17786 │
+│ <unknown>                           │        │       │       │       │       │
+└─────────────────────────────────────┴────────┴───────┴───────┴───────┴───────┘
