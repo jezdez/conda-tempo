@@ -8,14 +8,14 @@
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split from the Track A doc on April 23, 2026; migrated to conda-tempo repo same day) |
 | **Status** | Research — not actionable until Python 3.15 feedstock packaging lands |
-| **See also** | [Track A — startup latency (shippable today)](startup.md) · [Track B — transaction latency](transaction.md) |
+| **See also** | [Track A — startup latency (shippable today)](track-a-startup.md) · [Track B — transaction latency](track-b-transaction.md) |
 
 This document collects the forward-looking parts of the original conda startup
 research: the CPython optimization landscape, the Python 3.15 / PEP 810
 lazy-imports prototype, and the speculative-but-unprototyped opportunities
 (Rust bootstrapper, daemon, AOT compilation, plugin-group refactor). The
-immediate, Python-3.10+ changes live in the [Track A (startup.md)](startup.md);
-the transaction-pipeline work lives in the [Track B (transaction.md)](transaction.md).
+immediate, Python-3.10+ changes live in the [Track A](track-a-startup.md);
+the transaction-pipeline work lives in the [Track B](track-b-transaction.md).
 
 ## Contents
 
@@ -486,7 +486,7 @@ than their current equivalents.
 
 The plugin system (pluggy) accounts for 239 ms and 429 modules during
 `context.plugin_manager` initialization. While Track A's
-[A6](startup.md#a6-skip-plugin-hooks-for-shell-activate-path)
+[A6](track-a-startup.md#a6-skip-plugin-hooks-for-shell-activate-path)
 sidesteps this for activate, every other command still pays the full cost.
 
 One option: replace pluggy's core dispatch loop with a Rust extension (via
@@ -595,8 +595,8 @@ external plugin authors.
 
 | Date | Change |
 |---|---|
-| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `24c0e8cf4b8e740b1c50c64ff03ba46d` to `jezdez/conda-tempo/future.md`. Cross-links to Track A and Track B are now relative repo paths. |
-| 2026-04-23 | Split off from the [Track A (startup.md)](startup.md) as part of the three-track reorganization: Track A (startup, shipping) stays in the original gist, Track B (transaction pipeline) gets its own gist, Track C (this gist) collects PEP 810 lazy imports and speculative research. Former Track B headings renumbered to Track C throughout. PR IDs B1–B3 from the old single-gist roadmap renumbered to C1–C3. Cross-references to Track A's A6, A7, A22 sections now point at the Track A gist by absolute URL. No measurement changes. |
+| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `24c0e8cf4b8e740b1c50c64ff03ba46d` to `jezdez/conda-tempo/track-c-future.md`. Cross-links to Track A and Track B are now relative repo paths. |
+| 2026-04-23 | Split off from the [Track A](track-a-startup.md) as part of the three-track reorganization: Track A (startup, shipping) stays in the original gist, Track B (transaction pipeline) gets its own gist, Track C (this gist) collects PEP 810 lazy imports and speculative research. Former Track B headings renumbered to Track C throughout. PR IDs B1–B3 from the old single-gist roadmap renumbered to C1–C3. Cross-references to Track A's A6, A7, A22 sections now point at the Track A gist by absolute URL. No measurement changes. |
 | 2026-04-03 | Original research: CPython optimization landscape, PEP 810 evaluation, Python distribution build comparison, custom 3.15 builds (no-pgo / standard-pgo / startup-pgo / startup-pgo + frozen), full Track A+B conda prototype, speculative opportunities S1–S7. Published as part of the combined "Reducing conda Startup Latency" gist. |
 
 ---

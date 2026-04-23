@@ -9,7 +9,7 @@
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
 | **Status** | Implementation in progress — 16 of 25 Track A PRs merged |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
-| **See also** | [Track B — transaction latency](transaction.md) · [Track C — Python 3.15 and speculative research](future.md) |
+| **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
 ## Contents
 
@@ -109,9 +109,9 @@ prototyped but not yet runtime-measured.
 The Python-3.15-dependent optimizations (PEP 810 `lazy import`), the CPython
 build research (PGO/LTO/BOLT distribution comparison), and speculative
 future work (Rust bootstrapper, daemon, AOT compilation, plugin-group
-refactor) moved to the companion [Track C (future.md)](future.md).
+refactor) moved to the companion [Track C](track-c-future.md).
 Transaction-pipeline work (post-solver: verify, download, extract, link)
-lives in the [Track B (transaction.md)](transaction.md).
+lives in the [Track B](track-b-transaction.md).
 
 ---
 
@@ -561,7 +561,7 @@ macOS ARM64): 3.2× faster init (26.3 → 8.1 µs), 5.6× faster dump
 
 All changes are Python 3.10+ compatible. No new syntax, no architectural
 changes, backward compatible. PEP 810 `lazy import` and the related Python
-3.15 work live in the [Track C (future.md)](future.md).
+3.15 work live in the [Track C](track-c-future.md).
 
 | ID | Change | Python req. | Effort | Impact | Status |
 |---|---|---|---|---|---|
@@ -594,7 +594,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A24 | Canonicalize remaining deferred deprecation shims via `deprecated.constant(..., factory=)`: `auxlib/logz.py`, `common/serialize/__init__.py` | 3.10+ | ~40 lines | consistency / maintainability; sub-ms warm-cache effect | ✅ [#15926](https://github.com/conda/conda/pull/15926) merged |
 
 The Python-3.15-only counterparts (former B1/B2/B3) are tracked as C1/C2/C3
-in the [Track C (future.md)](future.md).
+in the [Track C](track-c-future.md).
 
 ---
 
@@ -1447,7 +1447,7 @@ and A13 (stat call caching) all reduce that baseline cost.
 
 Net standalone contribution once stacked is ~2 ms: most of the 158 ms isolated ceiling is overlap with A2/A3, since the lazy subcommand parser already avoids importing `conda_argparse` → `plugins/__init__.py` for most commands.
 
-**Future:** PEP 810 `lazy import` (Python 3.15+) operates at the bytecode level (`IMPORT_NAME` with lazy flag) and doesn't involve `__getattr__` at all, so it would let us drop the tracer detection and the subprocess test as a simplification in [Track C](future.md).
+**Future:** PEP 810 `lazy import` (Python 3.15+) operates at the bytecode level (`IMPORT_NAME` with lazy flag) and doesn't involve `__getattr__` at all, so it would let us drop the tracer detection and the subprocess test as a simplification in [Track C](track-c-future.md).
 
 ### Continuous monitoring
 
@@ -1577,9 +1577,9 @@ bench and −30 to −60 ms on subcommand benches via the shared
 `custom_expandvars()` fast-path).
 
 The Python-3.15-dependent counterparts (PEP 810 `lazy import`, CPython build
-research, speculative work) live in the [Track C (future.md)](future.md).
+research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
-[Track B (transaction.md)](transaction.md).
+[Track B](track-b-transaction.md).
 
 Track A implementation is underway — sixteen PRs merged, nine in review,
 all `MERGEABLE`.
@@ -1592,7 +1592,7 @@ all `MERGEABLE`.
 
 | Date | Change |
 |---|---|
-| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `897c58524c49dfa662959bdb54cf14b5` to `jezdez/conda-tempo/startup.md`. Cross-links to Track B and Track C are now relative repo paths (`transaction.md`, `future.md`). The three legacy gists are frozen with a deprecation notice pointing at this repo. Stable deep links like `#a6-skip-plugin-hooks-for-shell-activate-path` still work under the new URL. |
+| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `897c58524c49dfa662959bdb54cf14b5` to `jezdez/conda-tempo/track-a-startup.md`. Cross-links to Track B and Track C are now relative repo paths (`track-b-transaction.md`, `track-c-future.md`). The three legacy gists are frozen with a deprecation notice pointing at this repo. Stable deep links like `#a6-skip-plugin-hooks-for-shell-activate-path` still work under the new URL. |
 | 2026-04-23 | **Gist split.** Former single-gist report broken into three tracks: Track A (this gist, startup — shippable today), Track B (transaction latency — new scaffold), Track C (Python 3.15 / PEP 810 lazy imports and speculative research — moved out of here, including the CPython build research, Python distribution comparison, section 4.8 Track A+B measurements, section 5 Python 3.15 features, former Section 9 Speculative opportunities, and Appendices B+E). This gist is now Track A only; section numbers 2–10 collapsed to 1–7. Old Track B/C PR IDs (B1–B3) renumbered to C1–C3 in the Track C gist. Internal anchor link `#44-startup-cost-anatomy` updated to `#33-startup-cost-anatomy`; `#track-a-ship-now-no-python-315-required` updated to `#4-implementation-roadmap`. |
 | 2026-04-23 | **A13 [#15886](https://github.com/conda/conda/pull/15886), A19a [#15942](https://github.com/conda/conda/pull/15942), A24 [#15926](https://github.com/conda/conda/pull/15926) merged.** A13 landed on 2026-04-22 06:46 UTC (squash), A19a on 2026-04-22 21:47 UTC after the `test_subdir_data_coverage` fix, A24 on 2026-04-23 05:55 UTC. A24 picked up @kenodegard's test-style suggestions via two follow-up commits (`6d2983e` "Apply suggestions from code review" + `8293560` "Address review nits in test_deferred_deprecations") before merge, so the `warnings.catch_warnings(record=True)+simplefilter+any(issubclass(...))` pattern is gone and `pytest.deprecated_call()` is the canonical form across `tests/test_deferred_deprecations.py`. 16 of 25 Track A PRs now merged; 9 open PRs remain (A2/A3, A6, A8, A9, A10, A11, A14, A19b, A22), all in review and `MERGEABLE`. Ticket body and per-PR status table updated. |
 | 2026-04-22 | **Track A sweep.** All 12 open PRs re-checked: all `MERGEABLE`, nothing needs a rebase to merge, behind-counts 0–6. **A19a [#15942](https://github.com/conda/conda/pull/15942) failures diagnosed and fixed** — single failing test (`test_subdir_data_coverage`) was fanning out as ~20 red matrix cells; root cause: a stale `monkeypatch.setattr("conda.models.channel.Channel._cache_", {})` line predating the metaclass removal. The `reset_context()` call immediately below already routes through `Channel._reset_state()` via `register_reset_callaback`, so the line was both broken and redundant. Dropped (`75b61fd`). **A24 [#15926](https://github.com/conda/conda/pull/15926) now in review** (no longer draft) with two test-style suggestions from @kenodegard on `tests/test_deferred_deprecations.py` — replace the `warnings.catch_warnings(record=True) + simplefilter("always") + any(issubclass(...))` pattern with `pytest.deprecated_call()`, and the `simplefilter("ignore")` block in `test_deprecated_symbol_identity_is_stable` with the same. Straight cleanup, pending application. **A19b [#15916](https://github.com/conda/conda/pull/15916)** Windows integration flake on `test_emscripten_forge[classic]` confirmed as a `ConnectionResetError(10054)` CDN flake (same signature on A22 [#15893](https://github.com/conda/conda/pull/15893) ppc64le), not PR-related. **Stacked `conda run` estimate nudged** from 100–120 ms to **95–115 ms** to reflect A13 landing bigger than its original −3 ms budget: the `custom_expandvars()` fast-path is cross-cutting (channel URL munging, config env-var expansion), CodSpeed shows ×8 on `test_context_init` and −30 to −60 ms per subcommand bench, so the lower bound of the stacked range is the realistic one. |
@@ -1704,7 +1704,7 @@ All raw benchmark JSON files (hyperfine output) are preserved in:
 - `conda/.bench/startup/` — stock conda startup benchmarks
 
 (Python-distribution and 3.15-prototype benchmarks moved to the
-[Track C (future.md)](future.md).)
+[Track C](track-c-future.md).)
 
 </details>
 

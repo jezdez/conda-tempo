@@ -9,7 +9,7 @@
 | **Date** | April 23, 2026 |
 | **Status** | Planning — measurement harness pending |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
-| **See also** | [Track A — startup latency](startup.md) · [Track C — Python 3.15 and speculative research](future.md) |
+| **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
 ## Contents
 
@@ -157,7 +157,7 @@ Dependencies: B7 gates on B6. Everything else is independent.
 ### Phase 4: end-to-end confirmation
 
 Re-run W1/W2/W3 with hyperfine on the merged stack. Publish a
-stacked-estimate table analogous to the [Track A version](startup.md#35a-stacked-estimate-conda-run-with-full-track-a).
+stacked-estimate table analogous to the [Track A version](track-a-startup.md#35a-stacked-estimate-conda-run-with-full-track-a).
 
 ---
 
@@ -192,5 +192,5 @@ stacked-estimate table analogous to the [Track A version](startup.md#35a-stacked
 
 | Date | Change |
 |---|---|
-| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `1fd8467189ff7bd928fdea5a3ec4c73f` to `jezdez/conda-tempo/transaction.md`. Cross-links to Track A and Track C are now relative repo paths. |
+| 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `1fd8467189ff7bd928fdea5a3ec4c73f` to `jezdez/conda-tempo/track-b-transaction.md`. Cross-links to Track A and Track C are now relative repo paths. |
 | 2026-04-23 | Track B scaffold created. Phase 0 of the transaction-perf plan: split the former single-gist report into three (Track A trimmed, Track B new, Track C new for PEP 810 and speculative research). Suspects S1–S10 identified from a read-through of `link.py`, `path_actions.py`, `package_cache_data.py`, `solve.py`, `prefix_data.py`, `prefix_graph.py`, `history.py`, and `gateways/disk/`. No measurements yet. |

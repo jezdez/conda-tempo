@@ -6,9 +6,9 @@ Three tracks of performance research on conda, each in its own document:
 
 | Track | Document | What | Status |
 |---|---|---|---|
-| A | [startup.md](startup.md) | Startup latency on Python 3.10+: imports, plugin discovery, context init. Ships now. | 16 of 25 PRs merged |
-| B | [transaction.md](transaction.md) | Transaction pipeline: solve → fetch → verify → link → history. Post-solver machinery, cross-platform. | Planning, measurement harness pending |
-| C | [future.md](future.md) | Python 3.15 PEP 810 lazy imports, CPython build research, speculative opportunities (Rust bootstrapper, daemon, AOT, plugin-group refactor). | Research — not actionable until 3.15 feedstock lands |
+| A | [track-a-startup.md](track-a-startup.md) | Startup latency on Python 3.10+: imports, plugin discovery, context init. Ships now. | 16 of 25 PRs merged |
+| B | [track-b-transaction.md](track-b-transaction.md) | Transaction pipeline: solve → fetch → verify → link → history. Post-solver machinery, cross-platform. | Planning, measurement harness pending |
+| C | [track-c-future.md](track-c-future.md) | Python 3.15 PEP 810 lazy imports, CPython build research, speculative opportunities (Rust bootstrapper, daemon, AOT, plugin-group refactor). | Research — not actionable until 3.15 feedstock lands |
 
 ## What "tempo" means
 
@@ -24,7 +24,7 @@ the same across tracks:
 4. One PR per fix, <100 LOC where possible, news entry, before/after numbers.
 5. Re-measure the full stack at the end and publish a stacked estimate.
 
-The [scope rules](startup.md#scope-rules) and [out-of-scope list](startup.md#out-of-scope)
+The [scope rules](track-a-startup.md#scope-rules) and [out-of-scope list](track-a-startup.md#out-of-scope)
 in Track A apply to all three tracks.
 
 ## Related work
