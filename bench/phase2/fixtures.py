@@ -266,7 +266,18 @@ def clear_pyc_cache(packages) -> None:
 
 
 def synthetic_prefix_records(n: int, *, deps_per_record: int = 5):
-    """Build ``n`` in-memory ``PrefixRecord`` instances with realistic deps."""
+    """Build ``n`` in-memory ``PrefixRecord`` instances with realistic deps.
+
+    The dependency graph is guaranteed acyclic: record ``i`` depends
+    only on records with index ``< i``. Real conda prefixes are DAGs
+    too (package deps can't cycle by construction). Without this
+    guarantee the resulting ``PrefixGraph._toposort_handle_cycles``
+    path dominates at O(N^2) and swamps whatever Track B suspect
+    (e.g. S2 ``PrefixGraph.__init__``) is actually under test.
+
+    RNG seeded with 42 so the fixture is deterministic across
+    worker subprocesses.
+    """
     import random
 
     from conda.models.records import PrefixRecord
@@ -276,10 +287,11 @@ def synthetic_prefix_records(n: int, *, deps_per_record: int = 5):
 
     records = []
     for i, name in enumerate(names):
-        deps = rng.sample(
-            [n2 for n2 in names if n2 != name],
-            min(deps_per_record, n - 1),
-        )
+        # Pick deps only from records with a strictly smaller index
+        # so the graph is acyclic.
+        candidate_pool = names[:i]
+        k = min(deps_per_record, len(candidate_pool))
+        deps = rng.sample(candidate_pool, k) if k else []
         rec = PrefixRecord(
             name=name,
             version="0.0.0",
