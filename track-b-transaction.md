@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 1+2 complete (macOS baseline + Linux confirmation + cph/cps workspace + S8 confirmed), Phase 3 pending |
+| **Status** | Phase 3 PoCs implemented on local branches (B1/B2/B6/B8/B11); B7 dropped; B9a dropped as misdiagnosed |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -623,155 +623,42 @@ Phase-1 baseline. The remaining four suspects can wait until Phase 2
 has bandwidth to write their fixtures — none of them are gating any
 of the five confirmed targets.
 
----
+#### Implementation status (Phase-3 PoCs, 2026-04-26)
 
-#### Linux confirmation run (Docker / OrbStack, arm64)
+Five B-branches implemented and measured locally. Not yet pushed or
+PR'd; see the per-repo branches:
 
-All Phase-1 and Phase-2 numbers above come from macOS 26.3.1 / APFS /
-M1 Pro. To validate the macOS → Linux projections (especially S7's
-"should scale 3× at K=4") we reran the full harness inside an
-`arm64` Linux container. Same M1 Pro host, same conda `main @
-7c1ebba7c`, same hyperfine/memray/pyperf versions; Linux ext4 via
-OrbStack. See [`docker/`](docker/) for the Dockerfile + driver, and
-[`data/phase1_linux/`](data/phase1_linux/) +
-[`data/phase2_linux/`](data/phase2_linux/) for the raw data.
-
-##### Phase-1 wall time (hyperfine)
-
-| Workload | macOS (APFS) | Linux (ext4 via OrbStack) | Linux speedup |
-|---|---:|---:|---:|
-| W1 (small install) | 10.37 s | **3.32 s** | **3.1×** |
-| W2 (data-science install) | 26.67 s | **10.66 s** | **2.5×** |
-| W3 (synthetic prefix dry-run) | 36.44 s | **19.41 s** | **1.9×** |
-
-**Linux is 1.8–2.9× faster than macOS for every Phase-1 workload on
-identical hardware.** That's entirely filesystem + kernel, not CPU
-architecture. Primary drivers from the per-phase breakdown below:
-
-| `time_recorder` marker | W1 mac | W1 Linux | W2 mac | W2 Linux | W3 mac | W3 Linux |
-|---|---:|---:|---:|---:|---:|---:|
-| `conda_libmamba_solver._solving_loop` | 0.03 s | 0.07 s | 0.28 s | 0.62 s | 24.70 s | **11.50 s** |
-| `unlink_link_prepare_and_verify` | 5.53 s | **1.01 s** | 8.06 s | **3.25 s** | — | — |
-| `unlink_link_execute` | 3.74 s | **1.25 s** | 17.01 s | **5.57 s** | — | — |
-
-The prepare+verify phase drops **5.5×** on Linux, the execute phase
-drops **3×**. The solver itself is faster on Linux at W3 (24.70 s →
-11.50 s, 2.1×) as well — even though it's pure libmambapy C++, the
-fewer syscalls and faster malloc on Linux add up. That matches the
-Scalene decomposition below — macOS's extra time is in `system`
-(syscalls).
-
-##### Phase-1 Scalene (Linux only — conda-forge's arm64e scalene build fails to load on macOS 26)
-
-Aggregated across all conda source files. Per-line JSON at
-[`data/phase1_linux/<w>/scalene.json`](data/phase1_linux/).
-
-| Workload | elapsed under Scalene | Python | Native (C extensions) | System (kernel / I/O wait) |
-|---|---:|---:|---:|---:|
-| W1 | 6.8 s | **3 %** | **49 %** | **48 %** |
-| W2 | 29.2 s | **4 %** | **54 %** | **42 %** |
-| W3 | 0.2 s | **28 %** | **58 %** | **13 %** |
-
-This is the single most important framing shift the whole project
-has produced: **W1 and W2 are 96–97 % native + system time.**
-Python-level optimization of the conda codebase against these
-workloads has a ceiling of 3–4 % wall-time reduction. The remaining
-~96 % lives in:
-
-- **Native code** — libmambapy (solver), libarchive (extract), OpenSSL
-  (hashlib), CPython's own eval loop, the subprocess spawn machinery.
-- **System time** — blocked in the kernel on `posix.link`, `read`,
-  `write`, `wait` (for compileall subprocesses), and `mkdir`.
-
-**W3 is different.** It's a `--dry-run --no-deps` that skips all
-fetch/extract/link work. 28 % of W3 is Python — and that 28 % is
-almost entirely the `dict(sorted(...))` inside
-`SolverInputState.installed` (S11). B11 targets exactly that
-fraction. The 58 % native is libmambapy's C++ solver and cannot be
-shrunk from the conda side.
-
-The practical implication for Phase 3 is that **the fixes that save
-native or system time will dominate the fixes that save Python time**.
-That reshapes the priority ranking:
-
-- **B9a (S9: batch pyc subprocesses)** — removes ~180 subprocess
-  spawns and waits from W2. These land in `system`, which is 42 % of
-  W2 under Scalene. Highest-impact fix on a normal install.
-- **B6 (S6: parallelize verify)** — removes serial I/O latency but
-  the underlying `posix.link`/`read`/`write` syscalls are already in
-  `system`; parallelism moves them concurrent but doesn't remove any.
-  Gain bounded by filesystem parallelism (see S7 below — Linux
-  doesn't have much).
-- **B11 (S11: cache sorted)** — removes Python time in a workload
-  that is 28 % Python. Still high value for `--no-deps`/`--dry-run`
-  commands and for any large-prefix flow.
-- **B2 (S2: PrefixGraph O(N²))** — latent; only critical when
-  someone actually hits it.
-- **B7 (S7: parallelize hardlink)** — see below, **rejected on Linux**.
-
-##### Phase-2 per-suspect (macOS vs Linux, same arm64 CPU)
-
-| Suspect / metric | macOS (APFS) | Linux (ext4) | Linux / macOS |
-|---|---:|---:|---:|
-| **S6** `_verify_individual_level` per-action (4 KB) | 0.76 ms | **0.21 ms** | **3.6× faster** |
-| **S7** serial `posix.link` per-action (4 KB) | 0.42 ms | **0.021 ms** | **20× faster** |
-| **S7** parallel K=4 at M=5 000 | 1.39 s (1.52× vs serial) | **283 ms (2.7× *slower* than serial)** | — |
-| **S9** per-package subprocess startup | 731 ms | 933 ms | 1.3× slower |
-| **S9** batched P=60 total time | 1.12 s | 1.05 s | comparable |
-| **S9** speedup ratio (per_package / batched) | 39.9× | **53×** | comparable |
-| **S11** `.installed` per-access at N=5 000 | 2.42 ms | **955 µs** | **2.5× faster** |
-| **S11** `.installed` per-access at N=1 000 | 333 µs | **133 µs** | 2.5× faster |
-
-**S7 is the headline surprise.** Linux serial `posix.link` is **21×
-faster** than macOS — and Linux's `ThreadPoolExecutor` parallel
-variant is **slower than serial at every K**. The Phase-2 macOS
-projection ("~3× on Linux ext4") was wrong: on a filesystem this
-fast, Python's ThreadPoolExecutor submit-and-collect overhead exceeds
-the per-action work. B7 as proposed would **regress** Linux
-performance by 2–3×.
-
-Direct read-out at M=1 000:
-
-```
-macOS:
-  serial           415 ms        (baseline)
-  K=4 parallel     273 ms        1.52× faster
-Linux:
-  serial            20.0 ms      (baseline — 21× faster than mac serial)
-  K=4 parallel      46.7 ms      2.3× slower than Linux serial
-```
-
-B7 needs to be platform-conditional, or abandoned, or restricted to
-a bump of the user-visible `execute_threads` default (opt-in only
-for users who already know their filesystem benefits from it).
-Updated B7 proposal in the Phase-3 table below.
-
-**S6 holds up.** The 3.7× Linux speedup on serial is just filesystem
-efficiency — parallelization should still win (not measured on
-Linux yet). The per-action cost of 0.2 ms at 4 KB means W1's 200
-actions × per-action ≈ 40 ms on Linux (vs 5.5 s on macOS — where
-the larger real-package files amplify the cost). B6 is still
-worthwhile but its W1 percentage impact on Linux is much smaller
-than the macOS projection, because W1 Linux is already only 3.4 s
-total.
-
-**S9 is unchanged.** Batching wins 40–47× regardless of platform —
-the per-subprocess fixed cost is the same order on both (devenv
-Python's heavy site-init dominates). B9a is cross-platform worthwhile.
-
-**S11 is unchanged.** Same O(N log N) scaling, 2.6× faster absolute
-because Python dict/sort is faster on Linux. B11 is cross-platform
-worthwhile.
-
-##### Revised Phase-2 verdict table
-
-| Suspect | macOS verdict | Linux verdict | Fix |
+| Fix | Branch | Measured speedup | W-series impact |
 |---|---|---|---|
-| S2 | confirmed (latent) | confirmed (latent) | B2 land |
-| S6 | confirmed (strong) | confirmed (weaker but real) | B6 land |
-| S7 | confirmed (1.5–1.7×) | **rejected (regresses ≥2×)** | B7 — platform-conditional or drop |
-| S9 | confirmed (40×) | confirmed (45×) | B9a land |
-| S11 | confirmed | confirmed (2.6× faster absolute) | B11 land |
+| **B1** | `conda/conda:jezdez/track-b-b1-diff-sort-index` | n/a (unmeasured; same shape as B2) | latent, helps big `update --all` |
+| **B2** | `conda/conda:jezdez/track-b-b2-prefix-graph-by-name` | **53× at N=1000** (4.18 s → 78 ms) | latent, helps big `update --all` |
+| **B6** | `conda/conda:jezdez/track-b-b6-verify-parallel` | 1.26× at K=2 (opt-in via `verify_threads`) | ≤ ~25 % off W1 verify phase when enabled |
+| **B7** | dropped | n/a | regresses on Linux |
+| **B8** | `conda/conda:jezdez/track-b-b8-extract-threads` | ~8 % on mac, flat Linux | ~0.3 s off fetch/extract |
+| **B9a** | dropped | n/a | **aggregation is already wired; misidentified hot path** — see note below |
+| **B11** | `conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed` | **6500× per-access** (2.56 ms → 392 ns) | W3 **36.4 s → 12.1 s (3.0×)** end-to-end |
+
+Combined stack (not yet measured end-to-end in a merged branch): W3
+is projected at ~12 s with B11 alone; additional B1/B2 contribute at
+large-prefix scale; B6/B8 chip at the verify/extract phases for
+W1/W2.
+
+##### S9 correction
+
+Phase 1 W2's 186 subprocess calls on macOS are **`codesign`** on
+osx-arm64 binaries post-prefix-rewrite (`conda/core/portability.py:121`),
+not `compileall`. `conda/core/link.py:996` already
+uses `AggregateCompileMultiPycAction` to batch all pyc compiles into
+a single subprocess across packages. The Phase-2 S9 microbenchmark
+measured a synthetic "N subprocess calls vs 1 batched call" comparison,
+which confirmed the value of batching in principle — but conda's
+shipping code already does this. **B9a as originally scoped is a
+non-fix.** The real macOS subprocess overhead is codesign, which is
+individually called per rewritten binary; batching codesign would
+be a different fix (call it B9c, deferred) requiring a buffer/flush
+pattern around `update_prefix`'s `subprocess.run(["codesign", ...])`.
+On Linux there is no codesign step, which is part of why W2 is 2.5×
+faster on Linux end-to-end.
 
 ### Phase 3: spot PoCs
 
@@ -831,6 +718,7 @@ stacked-estimate table analogous to the [Track A version](track-a-startup.md#35a
 
 | Date | Change |
 |---|---|
+| 2026-04-26 | **Phase 3: five B-branches implemented and measured locally**, no PRs yet. **B8** (``EXTRACT_THREADS = 2``, one-liner) in ``conda/conda:jezdez/track-b-b8-extract-threads``. **B1** (``diff_for_unlink_link_precs`` dict-lookup sort key, ~15 LOC) in ``conda/conda:jezdez/track-b-b1-diff-sort-index``. **B2** (``PrefixGraph.__init__`` by-name index, 19 LOC, **53× at N=1000**) in ``conda/conda:jezdez/track-b-b2-prefix-graph-by-name``. **B6** (opt-in parallel ``_verify_individual_level`` via ``context.verify_threads``, 40 LOC, 1.26× at K=2) in ``conda/conda:jezdez/track-b-b6-verify-parallel``. **B11** (cache ``SolverInputState.installed`` on instance, 22 LOC, **6500× per-access / W3 36s → 12s**) in ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed``. **B9a dropped**: the Phase-1 W2 186-subprocess overhead is ``codesign`` on osx-arm64 binaries (``conda/core/portability.py:121``), not ``compileall`` — conda already aggregates pyc compile at ``link.py:996``. Re-scoping to a "batch codesign" fix (B9c) deferred. **B7 also dropped**: Linux regresses by 2–3×. Uncovered a methodology fix: the S2 fixture was generating cyclic dependency graphs and the ``_toposort_handle_cycles`` path was swallowing the benchmark signal; DAG-enforcing fixture committed separately. |
 | 2026-04-25 | **Harness migrated to pixi.** New [`pixi.toml`](pixi.toml) at the repo root declares the full workspace (conda + cph + cps editable from sibling paths, plus hyperfine/memray/pyperf/scalene from conda-forge) and exposes every Phase-1 / Phase-2 task as a named `pixi run` target. Cross-platform by design: the same `pixi.toml` drives macOS directly and spins up the Linux container via `pixi run linux-build` / `pixi run linux-all`. Replaces the old `conda/dev/start` bootstrap and `bench/setup_workspace.sh` flow. Both are kept as fallbacks but the README now points at pixi first. Two small infrastructure items shipped with the migration: [`bench/tools/conda`](bench/tools/conda) shim that routes `conda` around the pip-install entry-point guard (otherwise `conda create`/`env remove` fail in the pixi env), and a revised [`docker/Dockerfile`](docker/Dockerfile) + [`docker/entrypoint.sh`](docker/entrypoint.sh) that use pixi inside the container — so macOS and Linux environments are now materially identical, not just "similar". |
 | 2026-04-25 | **cph + cps added to the workspace + S8 confirmed.** New suspects S12 (`cps.extract_stream` per-member path-safety syscalls), S13 (`cps.stream_conda_component` double ZipFile parse), and S14 (`cph.utils._checksum` Python-level chunked hash loop vs. stdlib `hashlib.file_digest`) added to the Suspect hot spots table; all three live in the cph/cps workspace repos, not in conda itself. New [`bench/setup_workspace.sh`](bench/setup_workspace.sh) installs cph + cps source-editable in the macOS devenv; [`docker/Dockerfile`](docker/Dockerfile) clones them at pinned SHAs (`5da82cc` / `e47a70b`) and does the same in the Linux container. **S8 confirmed on both platforms**: the 2020-era `EXTRACT_THREADS = min(cpu, 3)` cap regresses Linux by 28–40 % at K ≥ 3 and is near-flat on macOS. Proposed B8: change to `EXTRACT_THREADS = 2` universally, ~1 LOC. Extended Background section documents the workspace scope (cph + cps in, conda-build / conda-content-trust / libmambapy out). |
 | 2026-04-25 | **Full rerun on macOS + Linux for reproducibility.** All Phase-1 and Phase-2 numbers above are from a fresh end-to-end run (cleared `data/phase{1,2}{,_linux}/`, rebuilt benchmarks, copied results back). Previous numbers (dated 2026-04-24) are within ±5% of the rerun across every workload and suspect — the harness is repeatable within its own noise. New orchestration artifact [`bench/run_all.sh`](bench/run_all.sh) mirrors `docker/run_linux.sh` so the two platforms now have symmetric single-command drivers. Highlights from the rerun: W1 mac 10.37 s (was 9.90), W2 mac 26.67 s (was 25.70), W3 mac 36.44 s (was 35.33); W1 Linux 3.32 s (was 3.37), W2 Linux 10.66 s (was 10.97), W3 Linux 19.41 s (was 19.63). S11 mac 2.42 ms / Linux 955 µs. S7 parallel-hurts-on-Linux signal reconfirmed at every M. |
