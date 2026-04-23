@@ -132,6 +132,10 @@ description = "W3: hyperfine synthetic-prefix --dry-run install (5 runs)"
 cmd = "bench/workloads.sh w3"
 depends-on = ["seed-big"]
 
+[tasks.w4]
+description = "W4: hyperfine cold-cache data-science install (3 runs; wipes pkgs/ per iteration, ~200 MB download each)"
+cmd = "bench/workloads.sh w4"
+
 [tasks.seed-big]
 description = "Seed bench_big prefix with 5000 synthetic conda-meta records"
 cmd = "python bench/seed_big_prefix.py --name bench_big --records 5000"

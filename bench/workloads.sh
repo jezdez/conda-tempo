@@ -70,13 +70,42 @@ run_w3() {
     printf '{"conda_version":"%s","date":"%s"}\n' "$CONDA_VERSION" "$DATE" > "$OUT/w3/run.json"
 }
 
+run_w4() {
+    mkdir -p "$OUT/w4"
+    # W4 = W2's data-science install but with a cold package cache, so
+    # every run pays fetch + extract + verify + link instead of reusing
+    # cached .conda archives. Primary cost centres we want to surface:
+    # network I/O (proxy / SSL), .conda extraction (zstd + tarfile),
+    # and per-file link+verify (S6/S7/S8 territory).
+    #
+    # The prepare hook wipes (1) the target env and (2) the package
+    # cache directory. Without step 2 the benchmark just measures the
+    # warm-cache case (= W2).
+    #
+    # Uses 3 runs instead of 5 because each run downloads ~200 MB
+    # of .conda archives from conda-forge CDN; network-bound variance
+    # dominates the small-samples noise anyway.
+    local pkgs_dir
+    pkgs_dir=$(conda config --show pkgs_dirs --json 2>/dev/null | python3 -c 'import sys, json; print(json.load(sys.stdin)["pkgs_dirs"][0])')
+    echo "W4: cold-cache data-science install, wiping ${pkgs_dir} between runs"
+    "$HYPERFINE" \
+        --warmup 0 --runs 3 \
+        --prepare "conda env remove -y -n bench_w4 >/dev/null 2>&1 || true; rm -rf \"${pkgs_dir}\"; mkdir -p \"${pkgs_dir}\"" \
+        --cleanup 'conda env remove -y -n bench_w4 >/dev/null 2>&1 || true' \
+        --export-json "$OUT/w4/hyperfine.json" \
+        --export-markdown "$OUT/w4/hyperfine.md" \
+        'conda create -n bench_w4 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter'
+    printf '{"conda_version":"%s","date":"%s","pkgs_dir":"%s"}\n' "$CONDA_VERSION" "$DATE" "$pkgs_dir" > "$OUT/w4/run.json"
+}
+
 case "${1:-all}" in
     w1) run_w1 ;;
     w2) run_w2 ;;
     w3) run_w3 ;;
+    w4) run_w4 ;;
     all) run_w1; run_w2; run_w3 ;;
     *)
-        echo "Usage: $0 [w1|w2|w3|all]" >&2
+        echo "Usage: $0 [w1|w2|w3|w4|all]" >&2
         exit 1
         ;;
 esac
