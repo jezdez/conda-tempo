@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 complete — 6 B-fixes landed on local branches, Phase-2 completeness round done |
+| **Status** | Phase 4 complete; B4/B12/B13 implemented; S5 measured; W4 workload added |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -151,6 +151,7 @@ Scaffold committed in [`bench/`](bench/); Phase-1 baseline measurements in
 - **W1. Fresh install, small:** `conda create -n bench_w1 -c conda-forge -y python=3.13 requests` (~15 pkgs). Baseline per-transaction overhead.
 - **W2. Fresh install, data-science:** `conda create -n bench_w2 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter` (~150 pkgs, `noarch: python` heavy → `.pyc` compile dominates).
 - **W3. Synthetic-prefix install:** `conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata`, where `bench_big` is seeded to **5 000** synthetic `PrefixRecord` JSON files via [`bench/seed_big_prefix.py`](bench/seed_big_prefix.py). `--no-deps` keeps the solve bounded so the wall-time is dominated by the post-solve diff + graph traversal over the synthetic records, which is what S1 and S2 target. (The original design used 50k records and `update --all --dry-run`; the scaling experiment below showed 50k is intractable within a 5-run hyperfine budget — see Phase-0 finding in the changelog.) The verify/execute suspects (S3–S8) need a real transaction and are deferred to a future W4.
+- **W4. Cold-cache data-science install:** same command as W2 (`pandas + scikit-learn + matplotlib + jupyter`) but with the package cache wiped between every hyperfine iteration. Exposes the fetch + extract path. Baseline macOS 43.9 s ± 1.5 s (home 1 Gbps, 3 runs). The delta vs W2 warm-cache (~17 s) is mostly network-bound CDN throughput + zstd extract.
 
 Driver: [`bench/workloads.sh`](bench/workloads.sh) wraps hyperfine
 (`--warmup 1 --runs 5 --export-json`). cProfile via
@@ -242,7 +243,7 @@ synthetic-prefix fixture from Phase 1.
 | `PrefixGraph.__init__` with N records | **confirmed (S2)** | [`bench_s2_prefix_graph.py`](bench/phase2/bench_s2_prefix_graph.py) |
 | `History.update()` against a synthetic N-line history | **measured, small (S3)** | [`bench_s3_history_update.py`](bench/phase2/bench_s3_history_update.py) |
 | `PrefixReplaceLinkAction.verify` on 1/10/50 MB binaries (SHA-256 cost) | **confirmed (S4)** | [`bench_s4_verify_big_files.py`](bench/phase2/bench_s4_verify_big_files.py) |
-| `_verify_prefix_level` with N synthetic collisions against big prefix | deferred (complex fixture) | S5 |
+| `_verify_prefix_level` with N synthetic collisions against big prefix | **confirmed, small (S5)** | [`bench_s5_verify_prefix_level.py`](bench/phase2/bench_s5_verify_prefix_level.py) |
 | `_verify_individual_level` on a package with M prefix-replace files | **confirmed (S6)** | [`bench_s6_verify_individual.py`](bench/phase2/bench_s6_verify_individual.py) |
 | `execute_threads = 1` → parallel `posix.link` fan-out at M hardlinks | **confirmed (S7)** | [`bench_s7_link_parallel.py`](bench/phase2/bench_s7_link_parallel.py) |
 | `do_extract_action` on a 200 MB conda-zstd package with 1/3/6/12 threads | **confirmed (S8)** | [`bench_s8_extract_pool.py`](bench/phase2/bench_s8_extract_pool.py) |
@@ -587,9 +588,10 @@ and takeaways:
 | **S1** (diff sort key) | N=50 000, k=2 000 | 12.46 s | 15.9 ms | **782×** |
 | **S1** (diff sort key) | N=10 000, k=400 | 321 ms | 1.49 ms | **215×** |
 | **S3** (History.update) | 50 000 lines | 29.8 ms | — | null (small absolute) |
-| **S4** (verify big files) | 3 × 50 MB | 302 ms (~100 ms/file) | gate SHA-256 on ``extra_safety_checks`` | projected ~25 % (B4) |
-| **S12** (extract_stream safety) | 30 000 members | 347 ms | skip ``commonpath``, use ``startswith`` | 20 % → 279 ms |
-| **S13** (ZipFile double parse) | 10 archives | 999 µs | parse once, reuse | **2×** → 502 µs |
+| **S4** (verify big files) | 3 × 50 MB | 302 ms (~100 ms/file) | gate SHA-256 on ``extra_safety_checks`` | **27 %** (B4 implemented, confirmed) |
+| **S5** (clobber check) | 500 pkgs × 150 paths (75k) | 259 ms | precompute path→rec map | small; ~80 ms at W2 scale |
+| **S12** (extract_stream safety) | 30 000 members | 347 ms | skip ``commonpath``, use ``startswith`` | 20 % → 279 ms (B12 implemented) |
+| **S13** (ZipFile double parse) | 10 archives | 999 µs | parse once, reuse | **2×** → 502 µs (B13 implemented) |
 | **S14** (``_checksum`` vs ``file_digest``) | 50 MB SHA-256 | 27.2 ms | ``hashlib.file_digest`` | null (~4 % within noise) |
 
 Takeaways:
@@ -598,21 +600,20 @@ Takeaways:
   B1 the most important latent fix for users with large prefixes. A
   full ``conda update --all`` on a research env would save ~24 s just
   in the two sort tails.
-- **S4 confirms** that SHA-256 on large binaries is ~25 % of
-  verify-per-file wall time. B4 (gate on ``extra_safety_checks``) is
-  worth shipping for prefixes heavy on ML frameworks; not implemented
-  in this round.
-- **S12 / S13** are real but small wins. Would ship as cleanup-tier
-  PRs to cps, not headline Track B wins.
+- **S4 confirmed and implemented (B4).** SHA-256 on large binaries is
+  ~25 % of verify-per-file wall time; gating on ``extra_safety_checks``
+  gives a measured 27 % reduction across 1/10/50 MB fixtures.
+- **S5 is confirmed but small.** At W2 scale (29k link paths)
+  ``_verify_prefix_level`` takes ~80 ms — under 0.3 % of W2 wall
+  time. B5 (precompute map) would shave further but not worth a PR
+  on its own.
+- **S12 / S13 are real but small wins.** Implemented as B12/B13
+  cleanup PRs to cps (B13 has a companion cph change for the new
+  ``zf=`` kwarg).
 - **S3 and S14 are null.** 30 ms for a 50k-line history is negligible
   at W-workload scale; ``file_digest`` doesn't beat the chunked loop
   because SHA-256 itself dominates wall time, not the Python-level
   iteration overhead.
-
-S5 (``_verify_prefix_level`` clobber check) deferred — its fixture
-requires a full ``PrefixActionGroup`` chain with ``UnlinkPathAction``
-+ ``CreatePrefixRecordAction`` + collision seeds that didn't fit into
-this round's time budget.
 
 #### Phase-2 summary
 
@@ -665,23 +666,28 @@ of the five confirmed targets.
 
 #### Implementation status (Phase-3 PoCs, 2026-04-26)
 
-Six B-branches implemented and measured locally. Not yet pushed or
-PR'd; see the per-repo branches:
+Eight B-branches implemented and measured locally (plus one pair for
+B13 that crosses repos). Not yet pushed or PR'd; see the per-repo
+branches:
 
 | Fix | Branch | Measured speedup | W-series impact |
 |---|---|---|---|
 | **B1** | `conda/conda:jezdez/track-b-b1-diff-sort-index` | **782× at N=50 000** (12.46 s → 15.9 ms) | ~24 s saved on ``update --all`` against 50k prefix |
 | **B2** | `conda/conda:jezdez/track-b-b2-prefix-graph-by-name` | **53× at N=1 000** (4.18 s → 78 ms) | latent; helps big `update --all` |
+| **B4** | `conda/conda:jezdez/track-b-b4-sha256-gate` | **27 % per-file** at 1/10/50 MB files | ~25 % off verify phase for ML-heavy prefixes |
 | **B6** | `conda/conda:jezdez/track-b-b6-verify-parallel` | 1.26× at K=2 (opt-in via `verify_threads`) | ≤ ~25 % off W1 verify phase when enabled |
 | **B7** | dropped | n/a | regresses on Linux |
 | **B8** | `conda/conda:jezdez/track-b-b8-extract-threads` | ~8 % on mac, flat Linux | ~0.3 s off fetch/extract |
 | **B9a** | dropped | n/a | aggregation is already wired; misidentified hot path |
 | **B9c** | `conda/conda:jezdez/track-b-b9c-codesign-batch` | **W1 mac 33 %, W2 mac 15 %** | ~4 s off W2 mac, ~3 s off W1 mac |
 | **B11** | `conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed` | **6500× per-access** (2.56 ms → 392 ns) | W3 mac **36.4 s → 12.1 s** standalone; stacked with B1/B2 → **1.72 s** |
+| **B12** | `conda/conda-package-streaming:jezdez/track-b-b12-extract-safety` | 20 % per-member (11.6 → 9.3 µs) | 67 ms off W2 extract |
+| **B13** | `conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse` + `conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile` | 2× (999 → 502 µs for 10 archives) | ~9 ms off W2 |
 
-All six implemented fixes are also cherry-picked into
-``conda/conda:jezdez/track-b-stack``. Phase-4 stacked wall times
-above reflect the combined stack (B1+B2+B6+B8+B9c + B11).
+B1 + B2 + B6 + B8 + B9c are cherry-picked into
+``conda/conda:jezdez/track-b-stack``. B4 and the cps/cph B12/B13
+pair are not yet in the stack (separate branches, would need another
+combined branch to measure together).
 
 ##### S9 correction
 
@@ -709,8 +715,8 @@ One PR per surviving suspect, same scope rules as Track A.
 | B1 | S1 | Precompute `{rec: i for i, rec in enumerate(previous_records)}`; same for `final_precs`. Replace the `.index(x)` key function with a dict lookup. Phase-2 data: 782× at N=50 000. ~10 LOC. |
 | B2 | S2 | Build a `by_name: dict[str, list[PrefixRecord]]` index once; replace the O(N²) inner loop with `for rec in by_name.get(spec.name, ()):`. Phase-2 data: O(N²) at ~9.5 µs per comparison → O(N×K) after fix, projected ~8-order-of-magnitude speedup at N=50 000. Preserves semantics. ~15 LOC plus tests. |
 | B3 | S3 | Append-only history updates. `History.update()` only needs the last `==>` block. Read the file from the end until the last header, parse only that block. Verify against `History.get_user_requests()`. Phase-2 data: 30 ms at N=50 000 lines — small absolute cost, consider deferring. |
-| B4 | S4 (conditional) | Only compute `sha256_in_prefix` when `context.extra_safety_checks`. Requires a grep for readers of `sha256_in_prefix` first. Phase-2 data: ~25 % of verify-per-file wall time at 50 MB files. |
-| B5 | S5 | Build a single `{short_path: prefix_rec}` map once before the clobber loop. Not yet benchmarked (complex fixture deferred). |
+| B4 | S4 | Gate ``sha256_in_prefix = compute_sum(...)`` on ``context.extra_safety_checks``. Implemented on ``conda/conda:jezdez/track-b-b4-sha256-gate``. Phase-2 data: **27 % per-file verify reduction** at 1/10/50 MB. The sole consumer of the recorded hash (``doctor.health_checks.altered_files``) already handles ``None`` gracefully. ~12 LOC. |
+| B5 | S5 | Build a single `{short_path: prefix_rec}` map once before the clobber loop. Phase-2 data: ``_verify_prefix_level`` is 2.8 µs/path and only ~80 ms at W2 scale — not worth a PR on its own. |
 | B6 | S6 | Push the verify fan-out down one level: replace the bare `for` at `link.py:632` with a `ThreadPoolExecutor(max_workers=context.verify_threads or 4).map(...)`. Phase-2 data: 0.73 ms/action O(M) → expected ~4× speedup on NVMe. Thread-safety confirmed (each action writes to its own uuid-named intermediate). ~10 LOC plus one test. |
 | B7 | S7 | **Revised:** Linux confirmation showed `ThreadPoolExecutor` parallel link *regresses* by 2–3× on fast filesystems (kernel serialization of inode creation is already fast enough that Python scheduling overhead dominates). macOS-only win at 1.7×. Options: (a) drop B7 entirely; (b) gate the fan-out behind a slow-disk heuristic (``stat`` the prefix, benchmark a handful of hardlinks, only parallelize if > 0.1 ms each); (c) leave it as an opt-in when the user sets `execute_threads > 1` manually. Recommended: (c) — leave user override working, don't change default. ~0 LOC (just documentation). |
 | B8 | S8 | Change `EXTRACT_THREADS = min(cpu, 3)` to `EXTRACT_THREADS = 2`. Phase-2 data: serial and K=2 are best on both macOS and Linux; K ≥ 3 regresses on Linux by 28–40 %. One-line constant change in `conda/core/package_cache_data.py:74`. News entry noting the behaviour change. |
@@ -718,8 +724,8 @@ One PR per surviving suspect, same scope rules as Track A.
 | B9b | S9 (extended) | Top-level "compile all packages in one subprocess at end of transaction" pass. Gated on: verifying no post-link script depends on a prior package's `.pyc` being present before later packages are linked. Bigger PR, >50 LOC. Also possibly a non-fix given the existing aggregation. |
 | **B9c** | **codesign (osx-arm64 binary rewrite)** | Queue osx-arm64 codesign calls during ``update_prefix()`` and flush as a single ``codesign -s - -f *paths`` at the end of ``_verify_individual_level``. Implemented on ``conda/conda:jezdez/track-b-b9c-codesign-batch``. Phase-4 data: W2 mac 26.67 s → 22.55 s (15 % reduction), W1 mac 10.37 s → 6.90 s (33 % reduction from a handful of base-package binary signatures). ~45 LOC in ``conda/core/portability.py`` + ``link.py``. |
 | B11 | S11 | Cache the sorted result of `SolverInputState.installed` once per solve. Phase-2 data: 2.35 ms per access at N=5 000 → ~50 ns with cache. Fix lives in `conda/conda-libmamba-solver`, not `conda`. |
-| B12 | S12 (optional) | Precompute ``dest_dir + os.sep`` once per call to ``extract_stream`` and replace the per-member ``commonpath`` check with a ``startswith`` check. Phase-2 data: 20 % per-member reduction (11.6 µs → 9.3 µs). Small absolute impact; ship as a cps cleanup PR, not a Track B headline. |
-| B13 | S13 (optional) | Parse each ``.conda``'s ``ZipFile`` once in ``stream_conda_component`` and reuse for both ``pkg`` and ``info`` components. Phase-2 data: 2× (999 µs → 502 µs for 10 archives). Small absolute impact. |
+| B12 | S12 | Precompute ``dest_dir + os.sep`` once per call to ``extract_stream`` and replace the per-member ``commonpath`` check with a ``startswith`` check. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety``. Phase-2 data: 20 % per-member reduction (11.6 µs → 9.3 µs). Small absolute impact; ships as a cps cleanup PR. |
+| B13 | S13 | Accept a pre-opened ``zipfile.ZipFile`` via a new ``zf=`` kwarg on ``stream_conda_component``. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse``; companion cph consumer on ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` threads one ZipFile through both ``pkg`` and ``info`` components. Phase-2 data: 2× (999 µs → 502 µs for 10 archives). |
 
 Dependencies: B7 gates on B6. Everything else is independent.
 
@@ -810,6 +816,7 @@ Remaining headroom (after this stack):
 
 | Date | Change |
 |---|---|
+| 2026-04-26 | **Follow-through: B4, B12, B13 implemented; W4 workload added; S5 measured.** New branches: ``conda/conda:jezdez/track-b-b4-sha256-gate`` (27 % per-file verify reduction at 1/10/50 MB; gates the SHA-256 hash on ``context.extra_safety_checks``). ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety`` (per-member safety check drops ``commonpath`` in favour of ``startswith``, 20 % faster). ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse`` + companion ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` (thread one ``ZipFile`` through both components of a ``.conda``; 2× faster per archive, via a new ``zf=`` kwarg). New **W4 workload** (cold-cache data-science install, wipes pkgs/ between iterations): 43.9 s ± 1.5 s on macOS — ~17 s attributable to cold-cache fetch + extract over warm W2. New **S5 benchmark**: ``_verify_prefix_level`` scales at 2.8 µs/path — confirmed but small (~80 ms at W2 scale), not worth a standalone PR. |
 | 2026-04-26 | **Phase 4 + Phase-2 completeness + B9c.** Combined ``conda/conda:jezdez/track-b-stack`` (cherry-picks B1 + B2 + B6 + B8 + B9c) and ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed`` measured end-to-end: **W3 36.4 s → 1.72 s (21.3×) on mac / 19.4 s → 1.21 s (16.0×) on Linux**; W1 mac gains 33 % from B9c alone (base-package binary codesign batching). B9c added: queues osx-arm64 codesign calls in ``portability.update_prefix`` and flushes a single batched ``codesign -s - -f *paths`` at the end of ``_verify_individual_level``. Six additional Phase-2 benchmarks landed for S1, S3, S4, S12, S13, S14. Standout results: S1 at N=50 000 confirms **782×** speedup projection (12.46 s → 16 ms), S4 confirms SHA-256 on large binaries is ~25 % of per-file verify cost; S14 is a null result (``hashlib.file_digest`` is within noise of the chunked loop). |
 | 2026-04-26 | **Phase 3: five B-branches implemented and measured locally**, no PRs yet. **B8** (``EXTRACT_THREADS = 2``, one-liner) in ``conda/conda:jezdez/track-b-b8-extract-threads``. **B1** (``diff_for_unlink_link_precs`` dict-lookup sort key, ~15 LOC) in ``conda/conda:jezdez/track-b-b1-diff-sort-index``. **B2** (``PrefixGraph.__init__`` by-name index, 19 LOC, **53× at N=1000**) in ``conda/conda:jezdez/track-b-b2-prefix-graph-by-name``. **B6** (opt-in parallel ``_verify_individual_level`` via ``context.verify_threads``, 40 LOC, 1.26× at K=2) in ``conda/conda:jezdez/track-b-b6-verify-parallel``. **B11** (cache ``SolverInputState.installed`` on instance, 22 LOC, **6500× per-access / W3 36s → 12s**) in ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed``. **B9a dropped**: the Phase-1 W2 186-subprocess overhead is ``codesign`` on osx-arm64 binaries (``conda/core/portability.py:121``), not ``compileall`` — conda already aggregates pyc compile at ``link.py:996``. Re-scoping to a "batch codesign" fix (B9c) deferred. **B7 also dropped**: Linux regresses by 2–3×. Uncovered a methodology fix: the S2 fixture was generating cyclic dependency graphs and the ``_toposort_handle_cycles`` path was swallowing the benchmark signal; DAG-enforcing fixture committed separately. |
 | 2026-04-25 | **Harness migrated to pixi.** New [`pixi.toml`](pixi.toml) at the repo root declares the full workspace (conda + cph + cps editable from sibling paths, plus hyperfine/memray/pyperf/scalene from conda-forge) and exposes every Phase-1 / Phase-2 task as a named `pixi run` target. Cross-platform by design: the same `pixi.toml` drives macOS directly and spins up the Linux container via `pixi run linux-build` / `pixi run linux-all`. Replaces the old `conda/dev/start` bootstrap and `bench/setup_workspace.sh` flow. Both are kept as fallbacks but the README now points at pixi first. Two small infrastructure items shipped with the migration: [`bench/tools/conda`](bench/tools/conda) shim that routes `conda` around the pip-install entry-point guard (otherwise `conda create`/`env remove` fail in the pixi env), and a revised [`docker/Dockerfile`](docker/Dockerfile) + [`docker/entrypoint.sh`](docker/entrypoint.sh) that use pixi inside the container — so macOS and Linux environments are now materially identical, not just "similar". |
