@@ -299,3 +299,43 @@ def synthetic_prefix_records(n: int, *, deps_per_record: int = 5):
         )
         records.append(rec)
     return records
+
+
+def conda_packages_from_cache(
+    min_size_bytes: int = 1_000_000,
+    max_count: int = 10,
+):
+    """Return up to ``max_count`` real ``.conda`` packages from the
+    caller's active package cache, filtered to those above
+    ``min_size_bytes``.
+
+    Used by S8 (extract pool scaling). Returns absolute filesystem
+    paths sorted descending by file size. Returns [] if the cache
+    has no eligible .conda files.
+    """
+    import json
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["conda", "config", "--show", "pkgs_dirs", "--json"],
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    pkgs_dirs = json.loads(out).get("pkgs_dirs") or []
+
+    candidates = []
+    for pdir in pkgs_dirs:
+        p = Path(pdir)
+        if not p.is_dir():
+            continue
+        for f in p.glob("*.conda"):
+            try:
+                size = f.stat().st_size
+            except OSError:
+                continue
+            if size >= min_size_bytes:
+                candidates.append((size, str(f)))
+    candidates.sort(reverse=True)
+    return [path for _size, path in candidates[:max_count]]
