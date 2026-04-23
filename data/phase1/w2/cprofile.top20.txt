@@ -1,0 +1,28 @@
+         27573881 function calls (25039284 primitive calls) in 32.227 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5329 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    0.000    0.000   32.560    6.512 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.007    0.007   31.626   31.626 /Users/jezdez/Code/git/conda/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   31.614   31.614 /Users/jezdez/Code/git/conda/conda/cli/install.py:271(install)
+        5    0.000    0.000   31.320    6.264 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:133(stop)
+        9    0.000    0.000   31.159    3.462 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
+        9    0.000    0.000   31.159    3.462 {method 'join' of '_thread._ThreadHandle' objects}
+      9/5    0.001    0.000   30.939    6.188 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
+        1    0.000    0.000   29.608   29.608 /Users/jezdez/Code/git/conda/conda/cli/install.py:518(handle_txn)
+        1    0.000    0.000   29.462   29.462 /Users/jezdez/Code/git/conda/conda/core/link.py:364(execute)
+      205    0.001    0.000   27.589    0.135 /Users/jezdez/Code/git/conda/conda/common/io.py:500(map)
+        1    0.004    0.004   18.871   18.871 /Users/jezdez/Code/git/conda/conda/core/link.py:866(_execute)
+      578    0.010    0.000   18.755    0.032 /Users/jezdez/Code/git/conda/conda/core/link.py:1045(_execute_actions)
+    50/13    0.002    0.000   11.725    0.902 /Users/jezdez/Code/git/conda/conda/common/io.py:106(decorated)
+      223    0.013    0.000   10.688    0.048 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/selectors.py:385(select)
+    29190    0.047    0.000   10.647    0.000 /Users/jezdez/Code/git/conda/conda/gateways/disk/create.py:343(create_link)
+      190    0.007    0.000   10.613    0.056 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/subprocess.py:1178(communicate)
+    28371    0.050    0.000   10.528    0.000 /Users/jezdez/Code/git/conda/conda/core/path_actions.py:511(execute)
+      186    0.016    0.000   10.517    0.057 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/subprocess.py:2094(_communicate)
+        1    0.000    0.000   10.514   10.514 /Users/jezdez/Code/git/conda/conda/core/link.py:309(verify)
+    25984    9.539    0.000    9.539    0.000 {built-in method posix.link}
+
+

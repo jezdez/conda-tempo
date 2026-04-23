@@ -1,0 +1,38 @@
+{
+  "conda.core.prefix_data.PrefixData.load": {
+    "call_count": 2,
+    "samples_seconds": [
+      0.542283,
+      0.045357
+    ],
+    "total_seconds": 0.5876398086547852
+  },
+  "conda_libmamba_solver.index.LibMambaIndexHelper._load_repo_info_from_repodata_dict": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.000412
+    ],
+    "total_seconds": 0.0004119873046875
+  },
+  "conda_libmamba_solver.solver.LibMambaSolver._collect_all_metadata": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.101306
+    ],
+    "total_seconds": 0.10130596160888672
+  },
+  "conda_libmamba_solver.solver.LibMambaSolver._solving_loop": {
+    "call_count": 1,
+    "samples_seconds": [
+      24.696705
+    ],
+    "total_seconds": 24.696705102920532
+  },
+  "fetch_extract_prepare": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.06445
+    ],
+    "total_seconds": 0.06445002555847168
+  }
+}

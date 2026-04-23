@@ -1,0 +1,28 @@
+         7136764 function calls (6409080 primitive calls) in 11.399 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5322 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    0.000    0.000   11.730    2.346 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.002    0.002   11.245   11.245 /Users/jezdez/Code/git/conda/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   11.240   11.240 /Users/jezdez/Code/git/conda/conda/cli/install.py:271(install)
+        5    0.000    0.000   10.975    2.195 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:133(stop)
+        9    0.000    0.000   10.651    1.183 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
+        9    0.000    0.000   10.651    1.183 {method 'join' of '_thread._ThreadHandle' objects}
+      9/5    0.000    0.000   10.613    2.123 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
+        1    0.000    0.000   10.312   10.312 /Users/jezdez/Code/git/conda/conda/cli/install.py:518(handle_txn)
+        1    0.000    0.000   10.192   10.192 /Users/jezdez/Code/git/conda/conda/core/link.py:364(execute)
+       42    0.000    0.000    9.478    0.226 /Users/jezdez/Code/git/conda/conda/common/io.py:500(map)
+    47/13    0.000    0.000    6.794    0.523 /Users/jezdez/Code/git/conda/conda/common/io.py:106(decorated)
+        1    0.000    0.000    6.250    6.250 /Users/jezdez/Code/git/conda/conda/core/link.py:309(verify)
+        1    0.000    0.000    5.911    5.911 /Users/jezdez/Code/git/conda/conda/core/link.py:843(_verify)
+        1    0.005    0.005    5.666    5.666 /Users/jezdez/Code/git/conda/conda/core/link.py:620(_verify_individual_level)
+      173    0.006    0.000    5.377    0.031 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/selectors.py:385(select)
+      165    0.005    0.000    5.294    0.032 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/subprocess.py:1178(communicate)
+      161    0.018    0.000    5.208    0.032 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/subprocess.py:2094(_communicate)
+      200    0.022    0.000    5.128    0.026 /Users/jezdez/Code/git/conda/conda/core/path_actions.py:558(verify)
+      200    0.006    0.000    4.781    0.024 /Users/jezdez/Code/git/conda/conda/core/portability.py:67(update_prefix)
+      161    0.014    0.000    4.593    0.029 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/subprocess.py:512(run)
+
+

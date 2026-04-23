@@ -1,0 +1,43 @@
+
+⚠  No symbol information was found for the Python interpreter  ⚠
+
+Without symbolic information reports showing native traces may not accurately 
+reflect stack traces. Please use an interpreter built with debug symbols for 
+best results. Check https://bloomberg.github.io/memray/native_mode.html for more
+information regarding how memray resolves symbols.
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃                                     ┃        ┃ Total ┃       ┃   Own ┃       ┃
+┃                                     ┃ <Total ┃ Memo… ┃   Own ┃ Memo… ┃ Allo… ┃
+┃ Location                            ┃ Memor… ┃     % ┃ Memo… ┃     % ┃ Count ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ PyObject_Vectorcall at <unknown>    │ 53.98… │ 96.7… │ 0.00… │ 0.00% │ 21409 │
+│ cfunction_vectorcall_FASTCALL_KEYW… │ 51.88… │ 92.9… │ 0.00… │ 0.00% │ 21407 │
+│ at <unknown>                        │        │       │       │       │       │
+│ run_module at <frozen runpy>        │ 51.88… │ 92.9… │ 0.00… │ 0.00% │ 21407 │
+│ _run_tracker at                     │ 51.88… │ 92.9… │ 0.00… │ 0.00% │ 21407 │
+│ /Users/jezdez/Code/git/conda/deven… │        │       │       │       │       │
+│ PyEval_EvalCode at <unknown>        │ 51.88… │ 92.9… │ 0.00… │ 0.00% │ 21406 │
+│ builtin_exec at <unknown>           │ 51.88… │ 92.9… │ 0.00… │ 0.00% │ 21406 │
+│ <module> at                         │ 51.87… │ 92.9… │ 0.00… │ 0.00% │ 21399 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ _run_code at <frozen runpy>         │ 51.87… │ 92.9… │ 0.00… │ 0.00% │ 21399 │
+│ _run_module_code at <frozen runpy>  │ 51.87… │ 92.9… │ 0.00… │ 0.00% │ 21399 │
+│ main at                             │ 51.87… │ 92.9… │ 0.00… │ 0.00% │ 21394 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ _PyObject_VectorcallDictTstate at   │ 51.84… │ 92.9… │ 0.00… │ 0.00% │ 21363 │
+│ <unknown>                           │        │       │       │       │       │
+│ slot_tp_call at <unknown>           │ 51.82… │ 92.8… │ 0.00… │ 0.00% │ 21342 │
+│ _PyObject_Call at <unknown>         │ 51.82… │ 92.8… │ 0.00… │ 0.00% │ 21342 │
+│ main_subshell at                    │ 51.82… │ 92.8… │ 0.00… │ 0.00% │ 21341 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ __call__ at                         │ 51.82… │ 92.8… │ 0.00… │ 0.00% │ 21341 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ conda_exception_handler at          │ 51.82… │ 92.8… │ 0.00… │ 0.00% │ 21341 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ _PyObject_Malloc at <unknown>       │ 50.39… │ 90.3… │ 12.6… │ 22.6… │ 10842 │
+│ _PyMem_ArenaAlloc at <unknown>      │ 37.76… │ 67.6… │ 37.7… │ 67.6… │    37 │
+│ new_arena at <unknown>              │ 37.75… │ 67.6… │ 3.07… │ 0.01% │    37 │
+│ allocate_from_new_pool at <unknown> │ 37.75… │ 67.6… │ 0.00… │ 0.00% │    37 │
+└─────────────────────────────────────┴────────┴───────┴───────┴───────┴───────┘

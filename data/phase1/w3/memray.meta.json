@@ -1,0 +1,11 @@
+{
+  "command_line": "/Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/bin/memray run --aggregate --follow-fork --native -o /Users/jezdez/Code/git/conda-tempo/data/phase1/w3/memray.bin -m conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata",
+  "has_native_traces": true,
+  "peak_memory_bytes": 55796789,
+  "peak_memory_human": "53.21 MiB",
+  "pid": 18425,
+  "python_allocator": "pymalloc",
+  "total_allocations": 15259,
+  "total_frames": 0,
+  "wall_time_s": 63.988
+}
