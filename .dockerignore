@@ -1,0 +1,17 @@
+# Keep the docker build context lean.
+# Everything under data/ is benchmark output; the container generates
+# its own. .pixi/envs is the local env; the container builds its own.
+.pixi/envs/
+.pixi/activation-env-v0.json
+data/phase1/
+data/phase2/
+data/phase1_linux/
+data/phase2_linux/
+.git/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.coverage
+.pytest_cache/

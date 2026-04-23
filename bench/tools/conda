@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+# Shim that routes ``conda`` through ``conda.cli.main:main`` (not
+# ``main_pip:main``), bypassing the pip-install guard that errors
+# "Conda has not been initialized" for every subcommand except
+# ``init``/``info``.
+#
+# conda's pyproject.toml declares ``conda = conda.cli.main_pip:main``
+# as its console script, because that's what gets installed by
+# ``pip install .``. Inside the normal conda-forge conda build, a
+# shell hook or a different entry point replaces that with
+# ``conda.cli.main:main``, which has no guard. The pixi env here uses
+# an editable pip install of conda from ../conda, so the pip guard is
+# active; this shim undoes that.
+#
+# Put on PATH via [activation.env] PATH in pixi.toml.
+import sys
+
+from conda.cli.main import main
+
+if __name__ == "__main__":
+    sys.exit(main())

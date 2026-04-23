@@ -7,8 +7,27 @@ Three tracks of performance research on conda, each in its own document:
 | Track | Document | What | Status |
 |---|---|---|---|
 | A | [track-a-startup.md](track-a-startup.md) | Startup latency on Python 3.10+: imports, plugin discovery, context init. Ships now. | 16 of 25 PRs merged |
-| B | [track-b-transaction.md](track-b-transaction.md) | Transaction pipeline: solve → fetch → verify → link → history. Post-solver machinery, cross-platform. | Planning, measurement harness pending |
+| B | [track-b-transaction.md](track-b-transaction.md) | Transaction pipeline: solve → fetch → verify → link → history. Post-solver machinery, cross-platform. | Phase 1+2 complete, 6 suspects confirmed, pixi harness |
 | C | [track-c-future.md](track-c-future.md) | Python 3.15 PEP 810 lazy imports, CPython build research, speculative opportunities (Rust bootstrapper, daemon, AOT, plugin-group refactor). | Research — not actionable until 3.15 feedstock lands |
+
+## Benchmark harness
+
+Track B ships a full benchmarking workspace driven by
+[pixi](https://pixi.sh), with editable installs of `conda`,
+`conda-package-handling`, and `conda-package-streaming` from sibling
+workspace checkouts. See [`bench/README.md`](bench/README.md) for
+details; quick start:
+
+```
+pixi install
+pixi run phase1                 # ~5 min, hyperfine W1/W2/W3
+pixi run phase2-s11             # ~3 min, one suspect
+pixi run all                    # ~90 min, everything
+
+pixi run linux-build            # build Docker image once
+pixi run linux-all              # full suite inside arm64 Linux container
+pixi run linux-fetch            # copy results to data/phase{1,2}_linux/
+```
 
 ## What "tempo" means
 

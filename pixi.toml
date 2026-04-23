@@ -1,0 +1,312 @@
+# pixi manifest for conda-tempo: the Track B transaction-latency
+# research workspace.
+#
+# Replaces the previous `dev/start` dance + bench/setup_workspace.sh
+# + bench/workloads.sh + docker/run_linux.sh flow. One declarative
+# file, cross-platform, reproducible via pixi.lock.
+#
+# Quick start:
+#   pixi install                    # resolve + install everything
+#   pixi run setup-workspace        # (re)install cph + cps editable
+#   pixi run phase1                 # hyperfine W1/W2/W3
+#   pixi run phase2-s11             # one suspect pyperf sweep
+#   pixi run all                    # everything in order (~90 min)
+#
+# Cross-platform:
+#   pixi run linux-build            # build the Docker image
+#   pixi run linux-all              # run the full suite in the Linux
+#                                   # container (writes data/phase{1,2}_linux/)
+#
+# See bench/README.md and docker/README.md for details.
+
+[workspace]
+name = "conda-tempo"
+description = "Measuring and reducing conda's tempo — Track B benchmark harness."
+authors = ["Jannis Leidel <jezdez@anaconda.com>"]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-aarch64", "linux-64"]
+
+# Put bench/tools on PATH first so the `conda` shim wins over the
+# pip-installed `conda` console script (which has a pip-install guard
+# that aborts for every subcommand except init/info). See
+# bench/tools/conda for the rationale.
+[activation.env]
+PATH = "$PIXI_PROJECT_ROOT/bench/tools:$PATH"
+
+# Runtime deps for conda + cph + cps come from conda-forge (they have
+# C extensions that are cleaner to install via conda than pip). The
+# three packages themselves (conda, cph, cps) are installed editable
+# from the sibling workspace paths via [pypi-dependencies] below.
+#
+# Benchmarking tools (hyperfine, memray, pyperf, scalene) also come
+# from conda-forge.
+[dependencies]
+python = "3.13.*"
+
+# conda runtime deps (from conda/pyproject.toml)
+archspec = ">=0.2.3"
+boltons = ">=23.0.0"
+charset-normalizer = "*"
+distro = ">=1.5.0"
+frozendict = ">=2.4.2"
+menuinst = ">=2"
+packaging = ">=23.0"
+platformdirs = ">=3.10.0"
+pluggy = ">=1.0.0"
+pycosat = ">=0.6.3"
+requests = ">=2.28.0,<3"
+"ruamel.yaml" = ">=0.11.14,<0.19"
+setuptools = ">=60.0.0"
+tqdm = ">=4"
+truststore = ">=0.8.0"
+zstandard = ">=0.15"
+
+# The solver plugin that W3 actually uses — installed from conda-forge
+# to pull its C++ extension deps (libmamba, libmambapy), then overridden
+# with an editable install via [pypi-dependencies] for B11 work.
+# We put the conda-forge install under build-deps because conda's
+# conda.plugins discovery will find the installed one unless the
+# editable one shadows it on sys.path.
+#
+# Actually: leave it to pypi so the editable install has no conda-forge
+# rival; libmambapy comes separately.
+libmambapy = "*"
+
+# Benchmarking toolchain.
+hyperfine = "*"
+memray = "*"
+pyperf = "*"
+scalene = "*"
+
+# Build deps for the editable pip installs that follow.
+pip = "*"
+hatchling = "*"
+"hatch-vcs" = "*"
+"flit-core" = "*"
+cython = "*"
+
+[pypi-dependencies]
+# Path-editable installs from the sibling workspace checkouts. With
+# `conda`, `conda-package-handling`, and `conda-package-streaming`
+# absent from the conda solve above, these are the only source of
+# those three packages — no version pin conflict.
+#
+# conda-libmamba-solver is added so B11 (S11 fix: cache
+# SolverInputState.installed) can be developed and benchmarked
+# against the workspace checkout.
+#
+# The ".." paths assume conda-tempo is a sibling of conda,
+# conda-package-handling, conda-package-streaming, and
+# conda-libmamba-solver.
+conda = { path = "../conda", editable = true }
+conda-package-handling = { path = "../conda-package-handling", editable = true }
+conda-package-streaming = { path = "../conda-package-streaming", editable = true }
+conda-libmamba-solver = { path = "../conda-libmamba-solver", editable = true }
+
+# Handy for re-rendering flamegraphs / summaries outside a full run.
+[tasks.summary]
+description = "Re-render all memray summaries + flamegraphs from existing .bin files"
+cmd = """
+for bin in data/phase1/*/memray.bin data/phase2/*/memray_n*.bin; do
+  [ -f "$bin" ] || continue
+  out=$(dirname "$bin")
+  stem=$(basename "$bin" .bin)
+  memray summary -r 20 "$bin" > "$out/$stem.summary.txt" || true
+  memray flamegraph --force -o "$out/$stem.flamegraph.html" "$bin" || true
+done
+echo "done"
+"""
+
+# ── Phase 1 baseline (hyperfine) ─────────────────────────────────
+
+[tasks.w1]
+description = "W1: hyperfine fresh install of python + requests (5 runs)"
+cmd = "bench/workloads.sh w1"
+
+[tasks.w2]
+description = "W2: hyperfine fresh data-science install (5 runs)"
+cmd = "bench/workloads.sh w2"
+
+[tasks.w3]
+description = "W3: hyperfine synthetic-prefix --dry-run install (5 runs)"
+cmd = "bench/workloads.sh w3"
+depends-on = ["seed-big"]
+
+[tasks.seed-big]
+description = "Seed bench_big prefix with 5000 synthetic conda-meta records"
+cmd = "python bench/seed_big_prefix.py --name bench_big --records 5000"
+
+[tasks.phase1]
+description = "Phase 1 hyperfine: all three workloads"
+depends-on = ["w1", "w2", "w3"]
+
+# ── Phase 1 profile (cProfile + memray + time_recorder per workload) ──
+
+[tasks.phase1-profile]
+description = "Phase 1 profile passes (cProfile + memray + time_recorder)"
+cmd = "bench/run_all.sh phase1-profile"
+
+# ── Phase 2 pyperf per suspect ────────────────────────────────────
+
+[tasks.phase2-s2]
+description = "S2: PrefixGraph.__init__ O(N^2) — pyperf fast sweep"
+cmd = "python bench/phase2/run_pyperf.py s2_prefix_graph --sizes 100 500 1000 --mode fast"
+
+[tasks.phase2-s6]
+description = "S6: _verify_individual_level O(M) — pyperf full sweep"
+cmd = "python bench/phase2/run_pyperf.py s6_verify_individual --sizes 50 200 1000 --mode full"
+
+[tasks.phase2-s7]
+description = "S7: posix.link serial vs parallel — pyperf full sweep"
+cmd = "python bench/phase2/run_pyperf.py s7_link_parallel --sizes 200 1000 5000 --mode full"
+
+[tasks.phase2-s8]
+description = "S8: extract-pool 1/2/4/6/8/12 threads — pyperf fast"
+cmd = "python bench/phase2/run_pyperf.py s8_extract_pool --sizes 5 --mode fast"
+
+[tasks.phase2-s9]
+description = "S9: pyc batching per-pkg vs all-in-one — pyperf fast"
+cmd = "python bench/phase2/run_pyperf.py s9_pyc_batching --sizes 10 30 60 --mode fast"
+
+[tasks.phase2-s11]
+description = "S11: SolverInputState.installed per-access — pyperf full"
+cmd = "python bench/phase2/run_pyperf.py s11_libmamba_installed --sizes 1000 5000 10000 --mode full"
+
+[tasks.phase2-pyperf]
+description = "All Phase-2 pyperf sweeps in sequence (~90 min)"
+depends-on = [
+    "phase2-s2", "phase2-s6", "phase2-s7",
+    "phase2-s8", "phase2-s9", "phase2-s11",
+]
+
+# ── Phase 2 memray per suspect ────────────────────────────────────
+
+[tasks.phase2-memray-s2]
+cmd = "python bench/phase2/run_memray.py s2_prefix_graph -n 500"
+[tasks.phase2-memray-s6]
+cmd = "python bench/phase2/run_memray.py s6_verify_individual -n 1000"
+[tasks.phase2-memray-s7]
+cmd = "python bench/phase2/run_memray.py s7_link_parallel -n 1000"
+[tasks.phase2-memray-s8]
+cmd = "python bench/phase2/run_memray.py s8_extract_pool -n 5"
+[tasks.phase2-memray-s9]
+cmd = "python bench/phase2/run_memray.py s9_pyc_batching -n 30"
+[tasks.phase2-memray-s11]
+cmd = "python bench/phase2/run_memray.py s11_libmamba_installed -n 5000"
+
+[tasks.phase2-memray]
+description = "Phase-2 memray for every confirmed suspect"
+depends-on = [
+    "phase2-memray-s2", "phase2-memray-s6", "phase2-memray-s7",
+    "phase2-memray-s8", "phase2-memray-s9", "phase2-memray-s11",
+]
+
+# ── Phase 2 composite ────────────────────────────────────────────
+
+[tasks.phase2]
+description = "Phase 2: all pyperf sweeps + memray passes"
+depends-on = ["phase2-pyperf", "phase2-memray"]
+
+# ── The whole thing ───────────────────────────────────────────────
+
+[tasks.all]
+description = "Full Phase 1 + Phase 2 for the current platform (~90 min on macOS)"
+depends-on = ["phase1", "phase1-profile", "phase2"]
+
+# ── Linux-in-a-box (Docker / OrbStack) ────────────────────────────
+# These wrap the docker/ flow. They run on macOS to drive a Linux
+# container; once inside the container you'd use the same pixi tasks
+# directly.
+
+[tasks.linux-build]
+description = "Build the Linux benchmark container (arm64, conda+cph+cps at pinned SHAs)"
+cmd = "docker build --platform linux/arm64 -f docker/Dockerfile -t conda-tempo-linux ."
+
+[tasks.linux-shell]
+description = "Open an interactive shell inside the Linux benchmark container"
+cmd = "docker run --rm -it -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux"
+depends-on = ["linux-volume"]
+
+[tasks.linux-volume]
+description = "(Re)create the docker volume used for benchmark output"
+cmd = "docker volume create conda-tempo-work >/dev/null"
+
+[tasks.linux-phase1]
+description = "Run Phase 1 hyperfine inside the Linux container"
+cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh phase1"
+depends-on = ["linux-volume"]
+
+[tasks.linux-phase1-profile]
+cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh phase1-profile"
+depends-on = ["linux-volume"]
+
+[tasks.linux-phase2]
+cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh phase2"
+depends-on = ["linux-volume"]
+
+[tasks.linux-scalene]
+cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh scalene"
+depends-on = ["linux-volume"]
+
+[tasks.linux-all]
+description = "Run the full Linux suite (phase1 + profile + phase2 + scalene) in the container"
+cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh all"
+depends-on = ["linux-volume"]
+
+[tasks.linux-fetch]
+description = "Copy Linux benchmark data from the docker volume into data/phase{1,2}_linux/"
+cmd = """bash -c '
+rm -rf data/phase1_linux data/phase2_linux
+mkdir -p data/phase1_linux data/phase2_linux
+docker run --rm -v conda-tempo-work:/work:ro -v $(pwd)/data:/out conda-tempo-linux bash -c "
+cp -r /work/data/phase1/. /out/phase1_linux/ 2>/dev/null || true
+cp -r /work/data/phase2/. /out/phase2_linux/ 2>/dev/null || true
+"
+echo linux data in data/phase{1,2}_linux/
+'
+"""
+
+[tasks.linux-reset]
+description = "Destroy the docker benchmark volume (next linux-* run starts fresh)"
+cmd = "docker volume rm conda-tempo-work >/dev/null || true"
+
+# ── Housekeeping ──────────────────────────────────────────────────
+
+[tasks.cleanup]
+description = "Remove bench_w1/bench_w2/bench_big envs and /tmp fixture trees"
+cmd = """
+conda env remove -y -n bench_w1 >/dev/null 2>&1 || true
+conda env remove -y -n bench_w2 >/dev/null 2>&1 || true
+conda env remove -y -n bench_big >/dev/null 2>&1 || true
+rm -rf /tmp/synth-* /tmp/s8-extract-* 2>/dev/null || true
+echo 'cleaned up benchmark envs and tmp fixtures'
+"""
+
+[tasks.verify-workspace]
+description = "Check that conda/cph/cps are loading from the workspace, not conda-forge"
+cmd = """
+python -c '
+import conda, conda_package_handling, conda_package_streaming, inspect
+for mod in (conda, conda_package_handling, conda_package_streaming):
+    path = inspect.getfile(mod)
+    tag = " (OK: workspace editable)" if "/site-packages/" not in path else " (WARN: pixi-installed, not editable)"
+    print(f"{mod.__name__}: {path}{tag}")
+'
+"""
+
+[tasks.machine-info]
+description = "Dump the current machine's tool versions for reproducibility"
+cmd = """bash -c '
+echo ===
+uname -a
+python --version
+conda --version
+hyperfine --version
+echo -n "memray:    "
+python -c "import memray; print(memray.__version__)"
+echo -n "pyperf:    "
+python -c "import pyperf; print(pyperf.__version__)"
+echo -n "scalene:   "
+python -c "from scalene.scalene_version import scalene_version; print(scalene_version)" 2>/dev/null || echo "(unknown)"
+'
+"""

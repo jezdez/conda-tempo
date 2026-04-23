@@ -1,21 +1,30 @@
-# Linux arm64 benchmark runner for conda-tempo.
+# Linux arm64 benchmark runner for conda-tempo (pixi-based).
 #
-# Goal: reproduce the Phase-1 + Phase-2 harness on Linux to validate
-# the macOS → Linux projections (especially S7's "~3× on ext4" claim)
-# and unlock Scalene (which has a broken arm64e build on conda-forge
-# for macOS 26, but works fine on Linux).
+# Lays out the workspace under /opt/workspace/ so pixi's path
+# deps (``path = "../conda"`` etc.) resolve as siblings, matching
+# the macOS layout under ``~/Code/git/``:
 #
-# Now includes cph + cps at pinned SHAs so the Linux S8 benchmark
-# measures the workspace versions (matching bench/setup_workspace.sh
-# on macOS).
+#     /opt/workspace/
+#         conda/                        pinned at CONDA_SHA
+#         conda-package-handling/       pinned at CPH_SHA
+#         conda-package-streaming/      pinned at CPS_SHA
+#         conda-tempo/                  copied from the host at build
+#             pixi.toml                 ../conda, ../cph, ../cps
+#             bench/                    harness
+#
+# At runtime the entrypoint stages bench/ from the host /repo mount
+# over the pre-built /opt/workspace/conda-tempo/bench/, so the
+# container always runs the current bench scripts. Data lands in
+# /work (a docker volume), never on the bind-mounted host /repo.
 #
 # Usage:
-#   docker build --platform linux/arm64 -t conda-tempo-linux docker/
-#   docker run --rm -it -v $(pwd):/repo:ro -v conda-tempo-work:/work \
-#       conda-tempo-linux bash
+#   pixi run linux-build
+#   pixi run linux-all
+#   pixi run linux-fetch      # copies data out to data/phase{1,2}_linux/
 
-FROM --platform=linux/arm64 condaforge/miniforge3:latest
+FROM --platform=linux/arm64 debian:trixie-slim
 
+ARG PIXI_VERSION=0.67.2
 ARG CONDA_SHA=7c1ebba7c
 ARG CPH_SHA=5da82cc
 ARG CPS_SHA=e47a70b
@@ -30,29 +39,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-dbg \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --filter=blob:none https://github.com/conda/conda.git /opt/conda-src \
-    && cd /opt/conda-src && git checkout ${CONDA_SHA}
-RUN git clone --filter=blob:none https://github.com/conda/conda-package-handling.git /opt/cph-src \
-    && cd /opt/cph-src && git checkout ${CPH_SHA}
-RUN git clone --filter=blob:none https://github.com/conda/conda-package-streaming.git /opt/cps-src \
-    && cd /opt/cps-src && git checkout ${CPS_SHA}
+RUN curl -fsSL "https://github.com/prefix-dev/pixi/releases/download/v${PIXI_VERSION}/pixi-aarch64-unknown-linux-musl.tar.gz" \
+        | tar -xzC /usr/local/bin \
+    && pixi --version
 
-WORKDIR /opt/conda-src
-RUN bash -c 'source ./dev/start -p 3.13 -i miniforge -u \
-    && conda install --prefix "${CONDA_PREFIX}" -c conda-forge -y \
-        memray pyperf scalene \
-    && conda remove --prefix "${CONDA_PREFIX}" -y --force \
-        conda-package-handling conda-package-streaming \
-    && pip install -e /opt/cps-src --no-deps --quiet \
-    && pip install -e /opt/cph-src --no-deps --quiet \
-    && conda clean -afy'
+WORKDIR /opt/workspace
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# Clone the three Python packages pixi will install editable.
+RUN git clone --filter=blob:none https://github.com/conda/conda.git conda \
+    && git -C conda checkout ${CONDA_SHA}
+RUN git clone --filter=blob:none https://github.com/conda/conda-package-handling.git conda-package-handling \
+    && git -C conda-package-handling checkout ${CPH_SHA}
+RUN git clone --filter=blob:none https://github.com/conda/conda-package-streaming.git conda-package-streaming \
+    && git -C conda-package-streaming checkout ${CPS_SHA}
+
+# Stage conda-tempo. We copy the whole repo so pixi.toml + bench/ +
+# docker/ + pixi.lock (if committed) all land. The entrypoint later
+# overlays /repo's current state on top of this at runtime.
+COPY . conda-tempo/
+
+# Pre-warm the pixi environment so first run doesn't pay the install cost.
+WORKDIR /opt/workspace/conda-tempo
+RUN pixi install
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENV CONDA_SRC=/opt/conda-src
 ENV TEMPO_REPO=/repo
 ENV TEMPO_WORK=/work
+ENV TEMPO_TEMPO=/opt/workspace/conda-tempo
 
 WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
