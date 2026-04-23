@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 complete; cph + cps audited; B4/B12/B13/B14 implemented; S5+S15 measured; W4 workload added |
+| **Status** | Phase 4 complete; cph + cps audited; B4/B12/B13/B14 implemented; S5/S15/S16 measured; W4 workload added |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -177,10 +177,101 @@ Speedup-options table (what we can still pursue):
 |---|---:|---|---|
 | **B14** (skip `utime`) | **~5 %** | trivial | **implemented** on cps:jezdez/track-b-b14-extract-utime |
 | Multi-threaded zstd decompression | 0 % | medium | drop — single-frame conda-forge archives can't parallelise |
-| Vendor a custom streaming tar extractor | 20–40 % | **big** | defer — out of Track B scope, likely belongs in a Rust rewrite (rattler-style) |
 | Pre-create parent dirs, skip per-file lstat | 5–8 % | medium | consider if B14 isn't enough; requires tarfile-internals patching |
 | Use `os.open` + write loop, bypass BufferedWriter | 3–5 % | medium | marginal return |
 | Skip `chmod` when mode matches default | 0 % for conda-forge | trivial | drop — conda-forge mode distribution doesn't benefit |
+| **Adopt py-rattler (Rust backend) in cps** | **~12 % on Linux, 0 % on mac** | **medium** (new optional build dep) | **see S16 and dedicated section below** |
+| Custom vendored C/Rust tar extractor in cps | 15-30 % ceiling | **big** | defer — effort vs. gain doesn't justify yet |
+
+#### Unpacking: where the limits actually are (2026-04-26)
+
+S16 (``bench_s16_rattler_extract.py``) compares cps's current
+``extract(path, dest)`` against ``rattler.package_streaming.extract``
+from [``py-rattler``](https://pypi.org/project/py-rattler/), the
+Python wrapper over the Rust ``rattler_package_streaming`` crate
+shipped by prefix.dev under the ``conda/`` org. Same 5 real
+scientific-Python ``.conda`` archives, identical input:
+
+| Platform | cps (Python + stdlib tarfile) | py-rattler (Rust) | Δ |
+|---|---:|---:|---:|
+| macOS APFS (M1 Pro; 8 471 files, 295 MB) | 3.71 s, 80 MB/s, 2 284 files/s | 3.67 s, 80 MB/s, 2 284 files/s | within noise |
+| Linux ext4 (OrbStack, 17 375 files, 1 423 MB) | 2.88 s, 495 MB/s, 6 033 files/s | 2.56 s, 557 MB/s, 6 787 files/s | **+12.5 %** |
+
+**Rust is not the bottleneck-eliminator you might expect here.** The
+extract is syscall-bound: `open`/`write`/`close`/`chmod`/`utime`
+dominate wall time. Rust calls the same kernel as Python, so it
+doesn't get a free win. What Rust *does* remove is the Python-level
+per-call overhead (generator machinery, `TarFile.extractall`'s
+path-resolution walks, the 15 lstats-per-file that stdlib tarfile
+performs internally). On a fast filesystem that's ~10-15 %; on APFS
+the filesystem itself is the cap.
+
+For comparison, the filesystem ceiling we hit on each platform:
+
+- APFS: **~2 300 files/s** (both implementations) — matches the S7
+  serial ``posix.link`` rate of 0.4 ms/call and S8's extract
+  saturation at K=1 or K=2.
+- ext4 (Linux container with virtiofs): **~6 800 files/s** (rattler)
+  / 6 000 (cps). Likely ~10 k files/s on bare metal.
+
+This reframes the "rewrite in Rust" case for cps. Adopting py-rattler:
+
+**Pros**
+- **~12 % faster extract on Linux**, where conda CI runs and the
+  majority of users install packages. Real saving on W2-scale
+  installs: ~1 s / 10 s.
+- **Alignment with the conda ecosystem direction** — py-rattler is
+  already part of the ``conda/`` org (prefix.dev's contribution),
+  not a community-maintained side project. The consolidation story
+  is consistent with the cps author's stated interest in folding
+  cph into cps: a single Rust-backed extract path across the
+  ecosystem.
+- **Drops ~500 lines of hand-written cps Python** (``extract_stream``
+  + ``TarfileNoSameOwner`` + ``tar_generator``) for a thinner wrapper
+  around the Rust crate.
+- Rust side already handles the quirks (tar filter, path safety,
+  permissions, zstd streaming) that cps has accumulated over time.
+
+**Cons**
+- **Build-time Rust toolchain** required for wheels. py-rattler
+  currently ships cpython-arm64/x86_64/aarch64 wheels on PyPI + conda-forge;
+  this is fine for pip users but adds a conda-forge rebuild step
+  any time rattler bumps.
+- **Cold-start import cost** of the shared library (~5 ms on
+  typical platforms, one-time).
+- **Less flexibility for in-process streaming use cases** — cps's
+  current ``stream_conda_component`` is a Python generator that
+  callers can pause or interpose on (used by
+  ``conda-package-handling`` for listing). py-rattler's
+  ``extract(path, dest)`` is a one-shot call; an equivalent
+  Python-interpolable streaming API would need to be added to
+  rattler first.
+
+**Practical adoption paths**
+
+| Option | What it looks like | Effort | Risk |
+|---|---|---|---|
+| A. Optional fast path in cps | ``cps.extract.extract(path, dest)`` tries ``import rattler`` first; falls back to stdlib tarfile if not installed | small (~30 LOC) | low |
+| B. Hard dep swap | cps requires py-rattler; all ``extract_stream`` call sites rewritten | medium-large | medium — breaks streaming API users |
+| C. cps absorbs cph + gains rattler fast path | Consolidates cph into cps AND adds rattler as fast backend; cph deprecated | large | medium — ecosystem coordination |
+
+Option A is the cleanest incremental step. It delivers the Linux
+speedup for users who install py-rattler without forcing it on
+those who can't. cps-level tests cover both code paths.
+
+**What B14-style Python-side optimizations look like against this
+ceiling:** B14 bought us 3.4 % on macOS by removing `utime`. A future
+"B20 skip per-file lstat via parent-dir precreate" could buy another
+5-8 %. Together those would close roughly half the Linux gap (12.5 %
+→ ~5 % behind rattler). Good ROI as pure-Python wins; still not worth
+abandoning a py-rattler adoption if cultural alignment is the primary
+driver.
+
+**Strategic takeaway**: Rust adoption should be justified on
+ecosystem-alignment and code-maintenance grounds — ~10-15 % speed
+is a pleasant kicker but not the headline. Pure-Python cleanup wins
+(B12 / B13 / B14 / B20-candidates) together achieve a similar
+magnitude with zero new build deps.
 
 ### Adjacent code that is *not* in Track B scope
 
@@ -901,6 +992,7 @@ Remaining headroom (after this stack):
 
 | Date | Change |
 |---|---|
+| 2026-04-26 | **Rust-in-cps exploration (S16) + unpacking ceiling analysis.** Benchmarked ``rattler.package_streaming.extract`` (py-rattler, the Rust-backed extract shipped under the ``conda/`` org by prefix.dev) against cps's current stdlib-tarfile path on the same 5 real scientific-Python ``.conda`` archives. Results: **macOS APFS within noise** (both ~80 MB/s, ~2300 files/s); **Linux ext4 ~12 % faster in rattler's favour** (557 vs 495 MB/s, 6787 vs 6033 files/s). Headline finding: extract is *syscall-bound*, not CPU-bound — Rust's advantage over Python + stdlib tarfile is only the per-call Python overhead and stdlib tarfile's 15-lstat-per-file path-resolution cost. The filesystem ceiling is what we hit on both platforms. Added an "Unpacking: where the limits actually are" section to the doc with three practical adoption paths for py-rattler in cps (optional fast path / hard-dep swap / cph absorb + rattler backend) and a strategic takeaway that Rust adoption here is about ecosystem alignment and maintenance-surface reduction, not speed. |
 | 2026-04-26 | **Deep cph audit + S15 + B14.** Per-module review of ``src/conda_package_handling/`` confirms the install hot path is ``api.extract`` → ``CondaFormat_v2.extract`` → ``streaming._extract`` → cps and nothing else in cph is touched during transactions (create/transmute/validate paths run only at build time). New S15 microbenchmark: cph dispatch adds 0.8 % (30 ms on 3.78 s) over calling cps directly — essentially free — so the cps author's direction of folding cph into cps is about API surface, not performance. Full cProfile of extract wall time added to the doc: 22 % in ``io.open``, 12 % in ``chmod``+``utime``, 8 % in ``lstat`` from stdlib tarfile internals, 9 % in zstd decompression. New **B14 implemented** (``TarfileNoSameOwner.utime`` → no-op, mirroring existing ``chown`` no-op; conda packages have canonicalised mtimes at build time): 3.4 % per-extract reduction on the 5-package fixture. Speedup-options table added: ``chmod`` can't easily skip because conda-forge uses 0o664/0o775 modes that always differ from umask-default; multi-threaded zstd is 0 % because conda-forge compresses single-frame; bigger wins (20-40 %) would require a custom vendored tar extractor which is out of Track B scope. |
 | 2026-04-26 | **Follow-through: B4, B12, B13 implemented; W4 workload added; S5 measured.** New branches: ``conda/conda:jezdez/track-b-b4-sha256-gate`` (27 % per-file verify reduction at 1/10/50 MB; gates the SHA-256 hash on ``context.extra_safety_checks``). ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety`` (per-member safety check drops ``commonpath`` in favour of ``startswith``, 20 % faster). ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse`` + companion ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` (thread one ``ZipFile`` through both components of a ``.conda``; 2× faster per archive, via a new ``zf=`` kwarg). New **W4 workload** (cold-cache data-science install, wipes pkgs/ between iterations): 43.9 s ± 1.5 s on macOS — ~17 s attributable to cold-cache fetch + extract over warm W2. New **S5 benchmark**: ``_verify_prefix_level`` scales at 2.8 µs/path — confirmed but small (~80 ms at W2 scale), not worth a standalone PR. |
 | 2026-04-26 | **Phase 4 + Phase-2 completeness + B9c.** Combined ``conda/conda:jezdez/track-b-stack`` (cherry-picks B1 + B2 + B6 + B8 + B9c) and ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed`` measured end-to-end: **W3 36.4 s → 1.72 s (21.3×) on mac / 19.4 s → 1.21 s (16.0×) on Linux**; W1 mac gains 33 % from B9c alone (base-package binary codesign batching). B9c added: queues osx-arm64 codesign calls in ``portability.update_prefix`` and flushes a single batched ``codesign -s - -f *paths`` at the end of ``_verify_individual_level``. Six additional Phase-2 benchmarks landed for S1, S3, S4, S12, S13, S14. Standout results: S1 at N=50 000 confirms **782×** speedup projection (12.46 s → 16 ms), S4 confirms SHA-256 on large binaries is ~25 % of per-file verify cost; S14 is a null result (``hashlib.file_digest`` is within noise of the chunked loop). |
