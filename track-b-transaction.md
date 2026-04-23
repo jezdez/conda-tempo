@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 complete; B4/B12/B13 implemented; S5 measured; W4 workload added |
+| **Status** | Phase 4 complete; cph + cps audited; B4/B12/B13/B14 implemented; S5+S15 measured; W4 workload added |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -90,14 +90,97 @@ ship with conda:
   delegates to (``cph.streaming._extract`` → ``cps.extract.extract_stream``).
 
 Phase-2 S8 (extract pool), S12 (per-member path-safety syscalls), S13
-(double ZipFile parse), and S14 (Python-level chunked checksum) all
-live in these repos, not in conda itself. Both are checked out at
+(double ZipFile parse), S14 (Python-level chunked checksum), and S15
+(cph-vs-cps dispatch overhead) all live in these repos, not in conda
+itself. Both are checked out at
 ``~/Code/git/conda-package-{handling,streaming}`` and installed
-source-editable into the devenv via
-[`bench/setup_workspace.sh`](bench/setup_workspace.sh) (macOS) or at
-pinned SHAs in the [`docker/Dockerfile`](docker/Dockerfile) (Linux).
-All Phase-2 numbers for S8+ benchmark the workspace checkouts, not
-the conda-forge shipped versions.
+source-editable into the devenv via pixi.toml (path-editable
+[pypi-dependencies]); [`docker/Dockerfile`](docker/Dockerfile) pins
+each at a specific SHA. All Phase-2 numbers for S8+ benchmark the
+workspace checkouts, not the conda-forge shipped versions.
+
+#### cph deprecation note (2026-04-26)
+
+The cps author has stated (personal communication) that "I would
+prefer to build the necessary API into -streaming and update software
+to drop -handling." S15 quantifies what that means for performance:
+cph adds ~30 ms (0.8 %) on a 3.8 s cps-direct extract of 5 packages
+— essentially free dispatch. The consolidation case is about API
+surface area, not speed.
+
+Implications for this Track-B cycle:
+
+- **B13 has a pair of paired fixes** (cps side + cph consumer). If
+  cph goes away the cph side becomes moot; the cps change (``zf=``
+  kwarg) is still the headline fix.
+- **B12 and B14 are cps-side** and survive any cph deprecation.
+- **B8** targets conda-side ``EXTRACT_THREADS`` and is unaffected.
+
+Deeper audit of cph: I reviewed every module under
+``src/conda_package_handling/`` (`api.py`, `conda_fmt.py`,
+`tarball.py`, `streaming.py`, `utils.py`, `validate.py`,
+`interface.py`, `cli.py`). The install hot path is
+``api.extract`` → ``CondaFormat_v2.extract`` → ``streaming._extract``
+→ cps. Nothing outside that chain is exercised by conda transactions.
+Other cph code (``create``, ``transmute``, ``validate_converted_files_match_streaming``,
+``_sort_file_order``, ``get_pkg_details``, ``list_contents``) runs
+only during package building / conversion / introspection, not
+during installs.
+
+#### Unpacking speedups: the full picture
+
+Single-package extract cProfile (3 real scientific-Python .conda
+archives, total 6268 tar members, 3.08 s wall):
+
+| Call | tottime | calls | per call | % of wall |
+|---|---:|---:|---:|---:|
+| ``io.open`` (write output files) | 679 ms | 6 271 | 108 µs | 22 % |
+| ``io.close`` | 291 ms | 6 282 | 46 µs | 9 % |
+| ``zstd.read`` | 270 ms | 18 538 | 15 µs | 9 % |
+| ``posix.lstat`` | 235 ms | **91 734** | 2.6 µs | 8 % |
+| ``io.write`` | 229 ms | 15 043 | 15 µs | 7 % |
+| **``posix.chmod``** | 207 ms | 6 268 | 33 µs | **7 %** |
+| **``posix.utime``** | 141 ms | 6 268 | 23 µs | **5 %** |
+| ``realpath`` | 90 ms | 6 284 | 14 µs | 3 % |
+| tarfile __read | 67 ms | 47 067 | 1.4 µs | 2 % |
+
+Observations:
+
+- **91 734 `posix.lstat` calls for 6 268 files = 15 lstat per file**
+  is stdlib tarfile's internal path-component / parent-dir / is-link
+  checks. Reducing this means either pre-creating all parent dirs
+  ourselves (possible but invasive) or replacing the stdlib tar
+  reader entirely. Out of scope as a Track B fix.
+- **`posix.chmod` is unavoidable** for conda-forge packages. Real
+  packages use tar modes `0o664` for files and `0o775` for
+  executables; after umask 022 the effective modes are `0o644` and
+  `0o755`, which always differ from the default a freshly-opened
+  file receives. No "skip chmod if already correct" shortcut works.
+- **`posix.utime` is pure overhead** on conda packages — the tar
+  mtime is canonicalised to a constant at build time, so preserving
+  it on disk encodes no information. **Implemented as B14**:
+  `TarfileNoSameOwner.utime` becomes a no-op, mirroring the existing
+  `chown` no-op. Measured 3.4 % reduction on the S15 extract fixture.
+- **zstd decompression is only 9 %** — multi-threaded decompression
+  would not materially help. Single-frame conda-forge compression
+  can't be parallelised at the frame level anyway.
+- **`io.open`/`io.write`/`io.close` together are ~38 %** of extract
+  wall time. These are per-file syscalls (open, write, close) that
+  can't be reduced without rewriting the extractor to issue fewer,
+  larger syscalls — probably with `sendfile` or `copy_file_range`
+  from kernel buffer to file. A custom streaming tar extractor could
+  do this, but not within the Python-level harness we maintain.
+
+Speedup-options table (what we can still pursue):
+
+| Idea | Max projected saving | Effort | Recommendation |
+|---|---:|---|---|
+| **B14** (skip `utime`) | **~5 %** | trivial | **implemented** on cps:jezdez/track-b-b14-extract-utime |
+| Multi-threaded zstd decompression | 0 % | medium | drop — single-frame conda-forge archives can't parallelise |
+| Vendor a custom streaming tar extractor | 20–40 % | **big** | defer — out of Track B scope, likely belongs in a Rust rewrite (rattler-style) |
+| Pre-create parent dirs, skip per-file lstat | 5–8 % | medium | consider if B14 isn't enough; requires tarfile-internals patching |
+| Use `os.open` + write loop, bypass BufferedWriter | 3–5 % | medium | marginal return |
+| Skip `chmod` when mode matches default | 0 % for conda-forge | trivial | drop — conda-forge mode distribution doesn't benefit |
 
 ### Adjacent code that is *not* in Track B scope
 
@@ -666,9 +749,9 @@ of the five confirmed targets.
 
 #### Implementation status (Phase-3 PoCs, 2026-04-26)
 
-Eight B-branches implemented and measured locally (plus one pair for
-B13 that crosses repos). Not yet pushed or PR'd; see the per-repo
-branches:
+Eight B-branches implemented and measured locally (plus paired cps/cph
+branches for B13, plus one cps-level no-op fix B14). Not yet pushed or
+PR'd; see the per-repo branches:
 
 | Fix | Branch | Measured speedup | W-series impact |
 |---|---|---|---|
@@ -683,6 +766,7 @@ branches:
 | **B11** | `conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed` | **6500× per-access** (2.56 ms → 392 ns) | W3 mac **36.4 s → 12.1 s** standalone; stacked with B1/B2 → **1.72 s** |
 | **B12** | `conda/conda-package-streaming:jezdez/track-b-b12-extract-safety` | 20 % per-member (11.6 → 9.3 µs) | 67 ms off W2 extract |
 | **B13** | `conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse` + `conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile` | 2× (999 → 502 µs for 10 archives) | ~9 ms off W2 |
+| **B14** | `conda/conda-package-streaming:jezdez/track-b-b14-extract-utime` | 3.4 % per extract (5-pkg fixture) | scales with total file count across installs |
 
 B1 + B2 + B6 + B8 + B9c are cherry-picked into
 ``conda/conda:jezdez/track-b-stack``. B4 and the cps/cph B12/B13
@@ -724,6 +808,7 @@ One PR per surviving suspect, same scope rules as Track A.
 | B9b | S9 (extended) | Top-level "compile all packages in one subprocess at end of transaction" pass. Gated on: verifying no post-link script depends on a prior package's `.pyc` being present before later packages are linked. Bigger PR, >50 LOC. Also possibly a non-fix given the existing aggregation. |
 | **B9c** | **codesign (osx-arm64 binary rewrite)** | Queue osx-arm64 codesign calls during ``update_prefix()`` and flush as a single ``codesign -s - -f *paths`` at the end of ``_verify_individual_level``. Implemented on ``conda/conda:jezdez/track-b-b9c-codesign-batch``. Phase-4 data: W2 mac 26.67 s → 22.55 s (15 % reduction), W1 mac 10.37 s → 6.90 s (33 % reduction from a handful of base-package binary signatures). ~45 LOC in ``conda/core/portability.py`` + ``link.py``. |
 | B11 | S11 | Cache the sorted result of `SolverInputState.installed` once per solve. Phase-2 data: 2.35 ms per access at N=5 000 → ~50 ns with cache. Fix lives in `conda/conda-libmamba-solver`, not `conda`. |
+| **B14** | extract utime no-op (cps-level) | Make ``TarfileNoSameOwner.utime`` a no-op mirroring the existing ``chown`` no-op. conda packages have canonicalised tar mtimes at build time (``anonymize_tarinfo``); preserving them on disk encodes no user-meaningful information. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b14-extract-utime``. Phase-2 S15 fixture: 3.78 s → 3.65 s (3.4 % reduction on 5-package extract). Per-file saving ~23 µs; compounds across large installs. |
 | B12 | S12 | Precompute ``dest_dir + os.sep`` once per call to ``extract_stream`` and replace the per-member ``commonpath`` check with a ``startswith`` check. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety``. Phase-2 data: 20 % per-member reduction (11.6 µs → 9.3 µs). Small absolute impact; ships as a cps cleanup PR. |
 | B13 | S13 | Accept a pre-opened ``zipfile.ZipFile`` via a new ``zf=`` kwarg on ``stream_conda_component``. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse``; companion cph consumer on ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` threads one ZipFile through both ``pkg`` and ``info`` components. Phase-2 data: 2× (999 µs → 502 µs for 10 archives). |
 
@@ -816,6 +901,7 @@ Remaining headroom (after this stack):
 
 | Date | Change |
 |---|---|
+| 2026-04-26 | **Deep cph audit + S15 + B14.** Per-module review of ``src/conda_package_handling/`` confirms the install hot path is ``api.extract`` → ``CondaFormat_v2.extract`` → ``streaming._extract`` → cps and nothing else in cph is touched during transactions (create/transmute/validate paths run only at build time). New S15 microbenchmark: cph dispatch adds 0.8 % (30 ms on 3.78 s) over calling cps directly — essentially free — so the cps author's direction of folding cph into cps is about API surface, not performance. Full cProfile of extract wall time added to the doc: 22 % in ``io.open``, 12 % in ``chmod``+``utime``, 8 % in ``lstat`` from stdlib tarfile internals, 9 % in zstd decompression. New **B14 implemented** (``TarfileNoSameOwner.utime`` → no-op, mirroring existing ``chown`` no-op; conda packages have canonicalised mtimes at build time): 3.4 % per-extract reduction on the 5-package fixture. Speedup-options table added: ``chmod`` can't easily skip because conda-forge uses 0o664/0o775 modes that always differ from umask-default; multi-threaded zstd is 0 % because conda-forge compresses single-frame; bigger wins (20-40 %) would require a custom vendored tar extractor which is out of Track B scope. |
 | 2026-04-26 | **Follow-through: B4, B12, B13 implemented; W4 workload added; S5 measured.** New branches: ``conda/conda:jezdez/track-b-b4-sha256-gate`` (27 % per-file verify reduction at 1/10/50 MB; gates the SHA-256 hash on ``context.extra_safety_checks``). ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety`` (per-member safety check drops ``commonpath`` in favour of ``startswith``, 20 % faster). ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse`` + companion ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` (thread one ``ZipFile`` through both components of a ``.conda``; 2× faster per archive, via a new ``zf=`` kwarg). New **W4 workload** (cold-cache data-science install, wipes pkgs/ between iterations): 43.9 s ± 1.5 s on macOS — ~17 s attributable to cold-cache fetch + extract over warm W2. New **S5 benchmark**: ``_verify_prefix_level`` scales at 2.8 µs/path — confirmed but small (~80 ms at W2 scale), not worth a standalone PR. |
 | 2026-04-26 | **Phase 4 + Phase-2 completeness + B9c.** Combined ``conda/conda:jezdez/track-b-stack`` (cherry-picks B1 + B2 + B6 + B8 + B9c) and ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed`` measured end-to-end: **W3 36.4 s → 1.72 s (21.3×) on mac / 19.4 s → 1.21 s (16.0×) on Linux**; W1 mac gains 33 % from B9c alone (base-package binary codesign batching). B9c added: queues osx-arm64 codesign calls in ``portability.update_prefix`` and flushes a single batched ``codesign -s - -f *paths`` at the end of ``_verify_individual_level``. Six additional Phase-2 benchmarks landed for S1, S3, S4, S12, S13, S14. Standout results: S1 at N=50 000 confirms **782×** speedup projection (12.46 s → 16 ms), S4 confirms SHA-256 on large binaries is ~25 % of per-file verify cost; S14 is a null result (``hashlib.file_digest`` is within noise of the chunked loop). |
 | 2026-04-26 | **Phase 3: five B-branches implemented and measured locally**, no PRs yet. **B8** (``EXTRACT_THREADS = 2``, one-liner) in ``conda/conda:jezdez/track-b-b8-extract-threads``. **B1** (``diff_for_unlink_link_precs`` dict-lookup sort key, ~15 LOC) in ``conda/conda:jezdez/track-b-b1-diff-sort-index``. **B2** (``PrefixGraph.__init__`` by-name index, 19 LOC, **53× at N=1000**) in ``conda/conda:jezdez/track-b-b2-prefix-graph-by-name``. **B6** (opt-in parallel ``_verify_individual_level`` via ``context.verify_threads``, 40 LOC, 1.26× at K=2) in ``conda/conda:jezdez/track-b-b6-verify-parallel``. **B11** (cache ``SolverInputState.installed`` on instance, 22 LOC, **6500× per-access / W3 36s → 12s**) in ``conda/conda-libmamba-solver:jezdez/track-b-b11-cache-installed``. **B9a dropped**: the Phase-1 W2 186-subprocess overhead is ``codesign`` on osx-arm64 binaries (``conda/core/portability.py:121``), not ``compileall`` — conda already aggregates pyc compile at ``link.py:996``. Re-scoping to a "batch codesign" fix (B9c) deferred. **B7 also dropped**: Linux regresses by 2–3×. Uncovered a methodology fix: the S2 fixture was generating cyclic dependency graphs and the ``_toposort_handle_cycles`` path was swallowing the benchmark signal; DAG-enforcing fixture committed separately. |
