@@ -1,0 +1,47 @@
+
+⚠  No symbol information was found for the Python interpreter  ⚠
+
+Without symbolic information reports showing native traces may not accurately 
+reflect stack traces. Please use an interpreter built with debug symbols for 
+best results. Check https://bloomberg.github.io/memray/native_mode.html for more
+information regarding how memray resolves symbols.
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃                                     ┃        ┃ Total ┃       ┃   Own ┃       ┃
+┃                                     ┃ <Total ┃ Memo… ┃   Own ┃ Memo… ┃ Allo… ┃
+┃ Location                            ┃ Memor… ┃     % ┃ Memo… ┃     % ┃ Count ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ _bench_per_package at               │ 5.422… │ 96.0… │ 0.00… │ 0.00% │  1286 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ register_memray at                  │ 5.422… │ 96.0… │ 0.00… │ 0.00% │  1286 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ main at                             │ 5.422… │ 96.0… │ 0.00… │ 0.00% │  1286 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ _PyObject_Malloc at <unknown>       │ 5.408… │ 95.8… │ 2.26… │ 40.0… │  1270 │
+│ cfunction_vectorcall_FASTCALL_KEYW… │ 5.369… │ 95.1… │ 0.00… │ 0.00% │  1283 │
+│ at <unknown>                        │        │       │       │       │       │
+│ exec_module at <frozen              │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ importlib._bootstrap_external>      │        │       │       │       │       │
+│ _load_unlocked at <frozen           │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load_unlocked at <frozen  │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load at <frozen           │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ object_vacall at <unknown>          │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ PyObject_CallMethodObjArgs at       │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ <unknown>                           │        │       │       │       │       │
+│ import_find_and_load at <unknown>   │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ PyImport_ImportModuleLevelObject at │ 5.336… │ 94.5… │ 0.00… │ 0.00% │  1279 │
+│ <unknown>                           │        │       │       │       │       │
+│ _call_with_frames_removed at        │ 5.328… │ 94.4… │ 0.00… │ 0.00% │  1269 │
+│ <frozen importlib._bootstrap>       │        │       │       │       │       │
+│ PyEval_EvalCode at <unknown>        │ 5.325… │ 94.3… │ 0.00… │ 0.00% │  1265 │
+│ builtin_exec at <unknown>           │ 5.325… │ 94.3… │ 0.00… │ 0.00% │  1265 │
+│ <module> at                         │ 5.163… │ 91.5… │ 0.00… │ 0.00% │  1102 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ PyObject_Vectorcall at <unknown>    │ 4.233… │ 75.0… │ 0.00… │ 0.00% │  1190 │
+│ _PyMem_ArenaAlloc at <unknown>      │ 3.146… │ 55.7… │ 3.14… │ 55.7… │     3 │
+│ new_arena at <unknown>              │ 3.146… │ 55.7… │ 0.00… │ 0.00% │     3 │
+└─────────────────────────────────────┴────────┴───────┴───────┴───────┴───────┘

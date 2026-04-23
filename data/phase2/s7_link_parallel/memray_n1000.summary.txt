@@ -1,0 +1,48 @@
+
+⚠  No symbol information was found for the Python interpreter  ⚠
+
+Without symbolic information reports showing native traces may not accurately 
+reflect stack traces. Please use an interpreter built with debug symbols for 
+best results. Check https://bloomberg.github.io/memray/native_mode.html for more
+information regarding how memray resolves symbols.
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃                                     ┃        ┃ Total ┃       ┃   Own ┃       ┃
+┃                                     ┃ <Total ┃ Memo… ┃   Own ┃ Memo… ┃ Allo… ┃
+┃ Location                            ┃ Memor… ┃     % ┃ Memo… ┃     % ┃ Count ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ register_memray at                  │ 16.30… │ 99.0… │ 0.00… │ 0.00% │  7453 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ main at                             │ 16.30… │ 99.0… │ 0.00… │ 0.00% │  7453 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ synthetic_hardlink_actions at       │ 16.28… │ 98.9… │ 0.00… │ 0.00% │  7450 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ _setup at                           │ 16.28… │ 98.9… │ 0.00… │ 0.00% │  7450 │
+│ /Users/jezdez/Code/git/conda-tempo… │        │       │       │       │       │
+│ _PyObject_Malloc at <unknown>       │ 16.03… │ 97.3… │ 5.54… │ 33.6… │  4167 │
+│ cfunction_vectorcall_FASTCALL_KEYW… │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7450 │
+│ at <unknown>                        │        │       │       │       │       │
+│ exec_module at <frozen              │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ importlib._bootstrap_external>      │        │       │       │       │       │
+│ _load_unlocked at <frozen           │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load_unlocked at <frozen  │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ _find_and_load at <frozen           │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ importlib._bootstrap>               │        │       │       │       │       │
+│ object_vacall at <unknown>          │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ PyObject_CallMethodObjArgs at       │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ <unknown>                           │        │       │       │       │       │
+│ import_find_and_load at <unknown>   │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ PyImport_ImportModuleLevelObject at │ 15.24… │ 92.5… │ 0.00… │ 0.00% │  7449 │
+│ <unknown>                           │        │       │       │       │       │
+│ _call_with_frames_removed at        │ 15.22… │ 92.4… │ 0.00… │ 0.00% │  7427 │
+│ <frozen importlib._bootstrap>       │        │       │       │       │       │
+│ PyEval_EvalCode at <unknown>        │ 15.22… │ 92.4… │ 0.00… │ 0.00% │  7425 │
+│ builtin_exec at <unknown>           │ 15.22… │ 92.4… │ 0.00… │ 0.00% │  7425 │
+│ <module> at                         │ 15.21… │ 92.3… │ 0.00… │ 0.00% │  7418 │
+│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ PyObject_Vectorcall at <unknown>    │ 11.09… │ 67.3… │ 0.00… │ 0.00% │  3893 │
+│ builtin___import__ at <unknown>     │ 11.06… │ 67.2… │ 0.00… │ 0.00% │  6386 │
+└─────────────────────────────────────┴────────┴───────┴───────┴───────┴───────┘

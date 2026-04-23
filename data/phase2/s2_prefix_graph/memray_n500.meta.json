@@ -1,0 +1,11 @@
+{
+  "command_line": "bench/phase2/run_memray.py s2_prefix_graph -n 500",
+  "has_native_traces": true,
+  "peak_memory_bytes": 26093276,
+  "peak_memory_human": "24.88 MiB",
+  "pid": 6396,
+  "python_allocator": "pymalloc",
+  "total_allocations": 15223,
+  "total_frames": 0,
+  "wall_time_s": 26.564
+}

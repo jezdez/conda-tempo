@@ -1,0 +1,11 @@
+{
+  "command_line": "bench/phase2/run_memray.py s7_link_parallel -n 1000",
+  "has_native_traces": true,
+  "peak_memory_bytes": 16470171,
+  "peak_memory_human": "15.71 MiB",
+  "pid": 5873,
+  "python_allocator": "pymalloc",
+  "total_allocations": 4028,
+  "total_frames": 0,
+  "wall_time_s": 0.806
+}
