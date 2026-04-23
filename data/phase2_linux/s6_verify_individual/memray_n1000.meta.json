@@ -1,0 +1,11 @@
+{
+  "command_line": "bench/phase2/run_memray.py s6_verify_individual -n 1000",
+  "has_native_traces": true,
+  "peak_memory_bytes": 27981067,
+  "peak_memory_human": "26.68 MiB",
+  "pid": 2936,
+  "python_allocator": "pymalloc",
+  "total_allocations": 5372,
+  "total_frames": 0,
+  "wall_time_s": 13.886
+}

@@ -1,0 +1,11 @@
+{
+  "command_line": "/opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/bin/memray run --aggregate --follow-fork --native -o /work/data/phase1/w2/memray.bin -m conda create -n bench_w2 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter",
+  "has_native_traces": true,
+  "peak_memory_bytes": 226929786,
+  "peak_memory_human": "216.42 MiB",
+  "pid": 1882,
+  "python_allocator": "pymalloc",
+  "total_allocations": 16037,
+  "total_frames": 0,
+  "wall_time_s": 585.473
+}

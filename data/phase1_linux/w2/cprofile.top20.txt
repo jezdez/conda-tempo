@@ -1,0 +1,28 @@
+         43250681 function calls (39254746 primitive calls) in 23.228 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5784 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    0.000    0.000   22.335    4.467 /opt/conda-src/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.006    0.006   21.494   21.494 /opt/conda-src/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   21.297   21.297 /opt/conda-src/conda/cli/install.py:271(install)
+        9    0.000    0.000   21.116    2.346 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
+        9    0.000    0.000   21.116    2.346 {method 'join' of '_thread._ThreadHandle' objects}
+        5    0.000    0.000   21.061    4.212 /opt/conda-src/conda/plugins/reporter_backends/console.py:133(stop)
+      9/5    0.001    0.000   20.807    4.161 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
+        1    0.000    0.000   18.457   18.457 /opt/conda-src/conda/cli/install.py:518(handle_txn)
+        1    0.000    0.000   18.310   18.310 /opt/conda-src/conda/core/link.py:364(execute)
+      272    0.002    0.000   15.154    0.056 /opt/conda-src/conda/common/io.py:500(map)
+    52/13    0.002    0.000   10.458    0.804 /opt/conda-src/conda/common/io.py:106(decorated)
+        1    0.008    0.008    9.614    9.614 /opt/conda-src/conda/core/link.py:866(_execute)
+      779    0.015    0.000    9.499    0.012 /opt/conda-src/conda/core/link.py:1045(_execute_actions)
+        1    0.000    0.000    8.689    8.689 /opt/conda-src/conda/core/link.py:309(verify)
+        1    0.000    0.000    6.186    6.186 /opt/conda-src/conda/core/link.py:843(_verify)
+        1    0.023    0.023    5.291    5.291 /opt/conda-src/conda/core/link.py:620(_verify_individual_level)
+      192    4.844    0.025    5.007    0.026 {built-in method time.sleep}
+      258    0.016    0.000    4.098    0.016 /opt/conda-src/conda/core/path_actions.py:975(execute)
+       13    0.001    0.000    4.049    0.311 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/selectors.py:385(select)
+    45448    0.153    0.000    4.016    0.000 /opt/conda-src/conda/core/path_actions.py:414(verify)
+
+

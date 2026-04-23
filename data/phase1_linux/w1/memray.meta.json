@@ -1,0 +1,11 @@
+{
+  "command_line": "/opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/bin/memray run --aggregate --follow-fork --native -o /work/data/phase1/w1/memray.bin -m conda create -n bench_w1 -c conda-forge -y python=3.13 requests",
+  "has_native_traces": true,
+  "peak_memory_bytes": 165553739,
+  "peak_memory_human": "157.88 MiB",
+  "pid": 1635,
+  "python_allocator": "pymalloc",
+  "total_allocations": 15913,
+  "total_frames": 0,
+  "wall_time_s": 170.141
+}

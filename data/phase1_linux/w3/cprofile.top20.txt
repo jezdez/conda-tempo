@@ -1,0 +1,28 @@
+         257176042 function calls (257097355 primitive calls) in 109.466 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5424 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   69.152   69.152 /opt/conda-src/conda/cli/main_install.py:122(execute)
+        1    0.000    0.000   68.957   68.957 /opt/conda-src/conda/cli/install.py:271(install)
+        1    0.000    0.000   68.845   68.845 /opt/conda-src/conda/core/solve.py:116(solve_for_transaction)
+        1    0.000    0.000   68.844   68.844 /opt/conda-src/conda/core/solve.py:195(solve_for_diff)
+        2    0.000    0.000   57.153   28.576 /opt/conda-src/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.000    0.000   55.432   55.432 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:134(solve_final_state)
+        2    0.000    0.000   55.431   27.716 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:1000(_notify_conda_outdated)
+        2    0.000    0.000   55.374   27.687 /opt/conda-src/conda/plugins/reporter_backends/console.py:133(stop)
+        6    0.000    0.000   55.133    9.189 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
+        6    0.000    0.000   55.132    9.189 {method 'join' of '_thread._ThreadHandle' objects}
+      6/2    0.000    0.000   55.106   27.553 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
+      487    5.321    0.011   42.934    0.088 {built-in method time.sleep}
+      8/7    0.000    0.000   41.650    5.950 /opt/conda-src/conda/common/io.py:106(decorated)
+        1    0.002    0.002   39.823   39.823 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:298(_solving_loop)
+        1   39.798   39.798   39.801   39.801 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:346(_solve_attempt)
+        1    0.009    0.009   39.767   39.767 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:395(_specs_to_request_jobs)
+    10034    2.781    0.000   38.234    0.004 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:220(installed)
+    11235    9.497    0.001   35.405    0.003 {built-in method builtins.sorted}
+ 50180444   10.978    0.000   26.015    0.000 <frozen _collections_abc>:897(__iter__)
+     5008    0.058    0.000   19.409    0.004 /opt/conda-src/devenv/Linux/aarch64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:267(always_update)
+
+

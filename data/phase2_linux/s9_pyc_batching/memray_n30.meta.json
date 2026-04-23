@@ -1,0 +1,11 @@
+{
+  "command_line": "bench/phase2/run_memray.py s9_pyc_batching -n 30",
+  "has_native_traces": true,
+  "peak_memory_bytes": 14178587,
+  "peak_memory_human": "13.52 MiB",
+  "pid": 160923,
+  "python_allocator": "pymalloc",
+  "total_allocations": 3069,
+  "total_frames": 0,
+  "wall_time_s": 32.626
+}
