@@ -105,20 +105,22 @@ that survive Phase 2.
 
 ### Phase 1: measurement harness
 
-Pending. Three fixed workloads, documented in a `README.md`:
+Scaffold committed in [`bench/`](bench/); baseline measurements pending. Three fixed workloads:
 
-- **W1. Fresh install, small:** `conda create -n bench_small -y python=3.13 requests` (~15 pkgs). Baseline per-transaction overhead.
-- **W2. Fresh install, data-science:** `conda create -n bench_ds -y python=3.13 pandas scikit-learn matplotlib jupyter` (~150 pkgs, `noarch: python` heavy → `.pyc` compile dominates).
-- **W3. Large-prefix update:** `conda update -n bench_big -y --all`, where `bench_big` is pre-seeded with a synthetic 50k-record `conda-meta`. Exercises S1/S2/S3/S5.
+- **W1. Fresh install, small:** `conda create -n bench_w1 -y python=3.13 requests` (~15 pkgs). Baseline per-transaction overhead.
+- **W2. Fresh install, data-science:** `conda create -n bench_w2 -y python=3.13 pandas scikit-learn matplotlib jupyter` (~150 pkgs, `noarch: python` heavy → `.pyc` compile dominates).
+- **W3. Large-prefix dry-run:** `conda update -n bench_big -y --all --dry-run`, where `bench_big` is seeded to 50k synthetic `PrefixRecord` JSON files via [`bench/seed_big_prefix.py`](bench/seed_big_prefix.py). Exercises S1 and S2 (solve-side suspects); the verify/execute suspects (S3–S8) need a real transaction and are deferred to a future W4.
 
-Driver: `hyperfine --warmup 1 --runs 5 --export-json ...`. Use `--offline`
-after the first run to isolate network from machinery.
+Driver: [`bench/workloads.sh`](bench/workloads.sh) wraps hyperfine
+(`--warmup 1 --runs 5 --export-json`). cProfile via
+[`bench/profile.py`](bench/profile.py); conda-internal per-phase timings via
+[`bench/parse_time_recorder.py`](bench/parse_time_recorder.py) against the
+existing `time_recorder("fetch_extract_execute")` and
+`time_recorder("unlink_link_execute")` markers. See [`bench/README.md`](bench/README.md)
+for prereqs.
 
-cProfile + `time_recorder` snapshot per workload; per-phase timings from
-the existing `time_recorder("fetch_extract_execute")` and
-`time_recorder("unlink_link_execute")` markers.
-
-Deliverable: per-phase wall-time table and cProfile top-20 per workload.
+Deliverable: per-phase wall-time table + cProfile top-20 per workload, committed
+to `data/phase1/<workload>/`.
 
 ### Phase 2: micro-benchmarks
 
@@ -192,5 +194,6 @@ stacked-estimate table analogous to the [Track A version](track-a-startup.md#35a
 
 | Date | Change |
 |---|---|
+| 2026-04-23 | **Phase 1 harness scaffold committed** in [`bench/`](bench/): `workloads.sh` for W1/W2/W3-dryrun, `profile.py` for cProfile, `seed_big_prefix.py` for the W3 synthetic 50k-record prefix, `parse_time_recorder.py` for conda's internal per-phase timings. Data layout under `data/phase1/<workload>/`. No measurements yet. |
 | 2026-04-23 | **Migrated to [conda-tempo](https://github.com/jezdez/conda-tempo) repo.** Source-of-truth moved from gist `1fd8467189ff7bd928fdea5a3ec4c73f` to `jezdez/conda-tempo/track-b-transaction.md`. Cross-links to Track A and Track C are now relative repo paths. |
 | 2026-04-23 | Track B scaffold created. Phase 0 of the transaction-perf plan: split the former single-gist report into three (Track A trimmed, Track B new, Track C new for PEP 810 and speculative research). Suspects S1–S10 identified from a read-through of `link.py`, `path_actions.py`, `package_cache_data.py`, `solve.py`, `prefix_data.py`, `prefix_graph.py`, `history.py`, and `gateways/disk/`. No measurements yet. |
