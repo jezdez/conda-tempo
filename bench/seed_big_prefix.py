@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -34,7 +33,8 @@ TEMPLATE_RECORD = {
     "files": [],
     "md5": "0" * 32,
     "paths_data": {"paths": [], "paths_version": 1},
-    "platform": "noarch",
+    "platform": None,
+    "arch": None,
     "sha256": "0" * 64,
     "size": 0,
     "subdir": "noarch",
@@ -43,7 +43,8 @@ TEMPLATE_RECORD = {
 }
 
 
-def prefix_path(name: str) -> Path:
+def prefix_path(name: str) -> Path | None:
+    """Look up an existing env by name. Returns None if not found."""
     try:
         out = subprocess.check_output(
             ["conda", "info", "--envs", "--json"], text=True
@@ -54,8 +55,7 @@ def prefix_path(name: str) -> Path:
     for env_path in info.get("envs", []):
         if Path(env_path).name == name:
             return Path(env_path)
-    envs_dirs = info.get("envs_dirs") or [os.path.expanduser("~/.conda/envs")]
-    return Path(envs_dirs[0]) / name
+    return None
 
 
 def seed(prefix: Path, n: int) -> None:
@@ -96,10 +96,13 @@ def main() -> int:
     ns = ap.parse_args()
 
     prefix = prefix_path(ns.name)
-    if not prefix.exists():
+    if prefix is None:
         subprocess.check_call(
             ["conda", "create", "-n", ns.name, "-y", "--no-default-packages"]
         )
+        prefix = prefix_path(ns.name)
+        if prefix is None:
+            sys.exit(f"error: created env {ns.name!r} but cannot locate its prefix")
     seed(prefix, ns.records)
     return 0
 

@@ -2,14 +2,18 @@
 """cProfile wrapper for a single conda invocation.
 
 Usage:
-    python bench/profile.py <workload> -- <conda-args...>
+    python bench/run_cprofile.py <workload> -- <conda-args...>
 
 Example:
-    python bench/profile.py w2 -- create -n prof_tmp -y python=3.13 pandas
+    python bench/run_cprofile.py w2 -- create -n prof_tmp -y python=3.13 pandas
 
 Writes to data/phase1/<workload>/:
     cprofile.prof        raw binary, loadable via pstats / snakeviz
     cprofile.top20.txt   pstats top-20 by cumulative time
+
+Note: this file is named ``run_cprofile.py`` (not ``profile.py``) because
+``cProfile`` internally does ``import profile as _pyprofile`` which would
+otherwise pick up this script and fail.
 """
 from __future__ import annotations
 
@@ -44,7 +48,7 @@ def main() -> int:
     try:
         profiler.enable()
         try:
-            runpy.run_module("conda.cli", run_name="__main__", alter_sys=True)
+            runpy.run_module("conda", run_name="__main__", alter_sys=True)
         except SystemExit:
             pass
     finally:
