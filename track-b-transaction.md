@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-27._
+> 2026-04-27 (dependency audit: S17 libmamba setup + W4 fetch profile)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -137,12 +137,22 @@ bottleneck directly observable rather than speculative:
   across any Track B workload on dataclasses.
 - **Linux W2 at 10.8 s is filesystem-bound** with no dominant
   `tottime` sink in the top-10. One-shot libmamba setup calls
-  (`_set_repo_priorities`, `_load_installed`) and `time.sleep`
-  in the executor dominate. No obvious further Python-level wins.
+  (`_set_repo_priorities`, `_load_installed`) account for ~8 s,
+  **confirmed upstream libmambapy C++ one-shot cost** by S17 and
+  so out of Track B scope (would require either a daemon to
+  amortize or changes in libmambapy itself).
+- **Cold-cache W4 is not bottlenecked on `requests`/`urllib3`.**
+  W4 fetch profile confirms `_SSLSocket.read` is 1.5 % of wall
+  time; 191 downloads total 2.6 s at ~14 ms/pkg, CDN-throughput-
+  bound. The remaining cold-cache costs are the linking phase
+  (18.8 s) and libmamba one-shot init (3.6 s).
 - **Large-prefix commands are now dominated by loading 50 000
   `conda-meta/*.json` files.** Track A A21 (PrefixData I/O)
   already tackled this direction; a prefix-level mtime-cache or
   batched JSON reads would be the next incremental step.
+- **Windows is completely unmeasured.** `menuinst`'s per-shortcut
+  NTFS/AV cost was flagged in the original S9 write-up but never
+  benchmarked. Tracked as a known gap.
 
 ### Next steps
 
@@ -533,7 +543,8 @@ Takeaways:
 - `conda-build`, `conda-smithy`, `boa` — package building, not
   installation.
 - `conda-content-trust` — signature verification; off by default,
-  separate performance concern (Track A-ish).
+  separate performance concern (Track A-ish). Never profiled by
+  Track B because the default-off path doesn't hit it.
 - `conda-libmamba-solver` pre-solve / repodata loading — measured on
   the W1/W2/W3 side via `time_recorder`, but fixes land in
   conda-libmamba-solver when needed (see S11 → B11).
@@ -541,6 +552,94 @@ Takeaways:
   track.
 - `conda.notices`, `conda.trust`, `conda.plugins.manager` startup —
   Track A concerns, not Track B.
+
+#### Dependency bottlenecks: profiled and dispositioned (2026-04-27)
+
+After the Phase-4 stacked profiles landed, we audited the external
+dependencies on the post-solver path for latent bottlenecks. Summary
+table:
+
+| Dependency | Observed cost (stacked) | Status |
+|---|---|---|
+| `zstandard` (C ext) | 9 % of extract wall time | Can't parallelise — conda-forge single-frame compression. Dispositioned. |
+| `stdlib tarfile` | 15 `lstat` per member = ~8 % of extract wall time | Rewriting is the only real fix; B20 works around by skipping the safety-check path for 81 % of members. |
+| `posix.link` (kernel) | 9.33 s / 25 984 calls on W2 mac — biggest remaining `tottime` sink | Kernel-bound on APFS; parallelising regresses Linux ext4. S7 correctly dropped. |
+| `subprocess` spawn | Reduced from 186 → 2 calls on W2 mac | Already addressed by existing `AggregateCompileMultiPycAction` + B9c batching. |
+| `requests` / `urllib3` / `cryptography` | `_SSLSocket.read` 0.69 s of 47 s on W4 cProfile (~1.5 %) | **Not a bottleneck on cold-cache W4.** Per-request overhead is dwarfed by CDN throughput; 191 downloads total 2.63 s = ~14 ms/pkg. Raw data in [`data/phase4/w4_profile/`](data/phase4/w4_profile/). |
+| `ruamel.yaml`, `pluggy`, `tqdm`, `pycosat`, `boltons`, `frozendict`, `packaging`, `distro`, `platformdirs`, `archspec`, `truststore`, `charset-normalizer` | None in top-50 `tottime` | Cold-start only or trivially small; Track A territory. |
+| `menuinst` on Windows | **Never measured.** Flagged in the original S9 write-up: "menuinst on Windows is measurable per shortcut". | Tracked as a gap. Needs a Windows harness run before it can be profiled. |
+| `conda-content-trust` (ed25519 sigs) | Default off, not exercised | Re-enable + profile if anyone turns it on in CI; would be per-package and serial today. |
+| `libmambapy._set_repo_priorities` + `_load_installed` one-shot setup | 1.78 s each on mac W4 (3.6 s total), 4 s each on Linux W2 (8 s total) cProfile | **Confirmed upstream cost (S17).** See below. |
+
+#### S17: libmamba index setup is one-shot C++ cost, not a Python bottleneck
+
+Phase-4 cProfile flagged `LibMambaIndexHelper._set_repo_priorities`
+and `LibMambaIndexHelper._load_installed` as the two largest
+remaining per-call `tottime` entries on any warm-cache workload,
+at 1.78 s each on mac W4 and 4 s each on Linux W2 (8 s of the 10.8 s
+W2 Linux wall time). Both are thin Python wrappers around
+libmambapy C++ calls (`db.set_repo_priority`,
+`db.add_repo_from_packages`).
+
+The question was whether the Python wrapper has a quadratic or the
+cost is fundamentally in libmambapy's C++ layer. S17
+(``bench/phase2/bench_s17_libmamba_index.py``) isolates the
+steady-state per-call cost against a live conda-forge noarch index:
+
+| N (installed records) | `_set_repo_priorities` | `_load_installed` |
+|---:|---:|---:|
+| 0 | 2.0 µs | 2.0 µs |
+| 150 | 2.0 µs | 2.34 ms |
+| 1 000 | 2.0 µs | 16.2 ms |
+| 5 000 | 2.0 µs | 83.4 ms |
+
+Two facts jump out:
+
+- **Steady-state `_set_repo_priorities` is 2 µs / call**, flat in N.
+  The observed 1.78 s in cProfile is **~10⁶× the steady-state cost**,
+  which can only be one-shot libmambapy initialisation (first-time
+  repodata→solv conversion, internal index construction, thread
+  pool spin-up). Not Python-attributable, not Python-fixable.
+- **`_load_installed` scales linearly at ~16.7 µs per record**
+  in steady state. At the realistic empty-prefix W2 case (n=150),
+  that's 2.4 ms — 750× less than cProfile's first-call number. Same
+  conclusion: the first-call cost includes libmambapy one-shot work
+  on the added repo's internal index.
+
+The 8 s Linux W2 figure is therefore **fundamental libmambapy C++
+setup cost on first solve of a process**, not a Track B target. It
+would only be reducible by either (a) amortizing across multiple
+solves (daemon-style reuse, tracked in Track C / speculative) or
+(b) changes to libmambapy itself to lazy-build the solv repo
+representation. Neither is in scope.
+
+Raw pyperf JSON + metadata in
+[`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/).
+
+#### W4 fetch-phase: not bottlenecked on requests/urllib3
+
+Separately, the "cold-cache network cost" hypothesis for W4 was that
+`requests` per-request overhead might matter. A cProfile pass with
+`pkgs/` wiped confirms it doesn't:
+
+| Phase (from `time_recorder`) | W4 mac stacked |
+|---|---:|
+| `unlink_link_execute` | 18.81 s |
+| `fetch_extract_execute` | 10.19 s |
+| `unlink_link_prepare_and_verify` | 3.10 s |
+| `download` marker (191 calls) | 2.63 s |
+| Solver + index setup | 1.76 s |
+
+cProfile `tottime` top: `posix.link` 9.9 s, `time.sleep` 8.7 s
+(executor joins), `_io.open` 2.0 s, libmamba index setup 3.6 s,
+`_SSLSocket.read` 0.69 s. **The SSL/HTTP stack is 1.5 % of the
+run; 191 downloads total 2.6 s at ~14 ms per package, which is
+CDN-throughput-bound, not Python-overhead-bound.** Deferred-import
+tricks or a requests rewrite would not materially help cold-cache
+installs. The linking phase (19 s) and the one-shot libmamba init
+(3.6 s) remain the real cold-cache costs.
+
+Raw data: [`data/phase4/w4_profile/`](data/phase4/w4_profile/).
 
 ---
 
@@ -1340,6 +1439,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-27 | **Dependency bottleneck audit + S17 + W4 fetch profile.** Systematically audited conda's external dependencies (`zstandard`, `stdlib tarfile`, `requests`/`urllib3`/`cryptography`, `ruamel.yaml`, `pluggy`, `tqdm`, `menuinst`, `conda-content-trust`, libmambapy, etc.) for post-solver bottlenecks. New "Dependency bottlenecks" subsection under Background documents each one's status. Two new measurements: **S17 microbench** (`bench/phase2/bench_s17_libmamba_index.py`) isolates the steady-state per-call cost of `LibMambaIndexHelper._set_repo_priorities` and `_load_installed`, finding **2 µs and 16.7 µs/record** respectively — ~10⁶× below the 1.78 s cProfile showed for the same functions on a real install. Conclusion: the 3.6 s (mac) / 8 s (Linux) cost cProfile attributes to these functions is **libmambapy C++ one-shot setup cost** (first-time repodata→solv conversion, internal index construction), not Python-fixable. Out of Track B scope. **W4 fetch-phase cProfile** confirms `requests`/`urllib3`/`cryptography` are NOT a cold-cache bottleneck: `_SSLSocket.read` is 0.69 s of 47 s (~1.5 %), 191 downloads total 2.63 s at ~14 ms/pkg, CDN-throughput-bound. Deferred-import tricks would not help W4. Raw data in [`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/) and [`data/phase4/w4_profile/`](data/phase4/w4_profile/). Executive Summary's remaining-headroom list updated with these findings; `menuinst` on Windows explicitly flagged as the only profiled-but-unmeasured dependency gap. |
 | 2026-04-27 | **Executive Summary section added.** Placed between Contents and Scope, structured like Track A's (narrative → headline results → shipping table → remaining headroom → next steps). Kept in sync with the Changelog going forward; carries its own "Last refreshed" date. No new measurements; reflects the state after the 2026-04-27 W3@50k + stacked profile commit. |
 | 2026-04-27 | **W3 at 50k records on the stack + stacked-run profiles + B9b close-out.** Reseeded `bench_big` at 50k records (the original intractable case that got downgraded to 5k in Phase 0) and ran hyperfine against the full stack: **mac 12.44 s ± 1.37 s (>24× vs the >300 s stock-conda intractable baseline); Linux 8.03 s ± 0.05 s (>37×)**. With B1+B2+B11 stacked the solve is constant-ish and the 50k-record post-solve path scales sublinearly vs 5k (mac 1.87 → 12.44 s is 6.6× for 10× data, Linux 1.26 → 8.03 s is 6.4×). cProfile + `time_recorder` on the stacked W1 and W2 runs (both platforms) committed to [`data/phase4/<w>/`](data/phase4/) and [`data/phase4_linux/<w>/`](data/phase4_linux/), and the "remaining headroom" bullets in Phase 4 are now measured rather than inferred. Standout: macOS W2's remaining 24 s still has `posix.link` as its single biggest tottime sink at **9.33 s / 25 984 calls** — this is exactly the S7 parallel-link signal that regresses on Linux ext4 and was correctly dropped as a default. **B9b closed out as a non-fix**: the stacked W2 profile shows `compile_multiple_pyc` is called exactly once per transaction across all ~186 `noarch: python` packages, confirming `AggregateCompileMultiPycAction` is already the end-of-transaction batch that B9b was speculatively proposing. B9c analogously: 185 `_enqueue_codesign` calls flushed into 1 `flush_pending_codesign` subprocess (0.58 s). Harness: `run_cprofile.py` and `parse_time_recorder.py` gained a `--phase` arg so Phase-4 stacked profiles don't clobber the Phase-1 baselines. |
 | 2026-04-26 | **Linux W4 measured on full stack.** 26.276 s ± 0.940 s baseline → **23.381 s ± 0.616 s stacked** (−2.9 s, −11 %), 3 runs, container ext4, `pkgs/` wiped between iterations. Smaller absolute and relative than macOS because the Linux baseline is already 1.7× faster (fs-capped) and B9c codesign batching does not apply. Stddev tightens from ±0.94 to ±0.62 s (same pattern as macOS — B20 fast path removes tarfile's per-member variance). Harness plumbing landed with this run: new `linux-w4` pixi task bind-mounts the four local track-b branches (conda / cph / cps / libmamba-solver) over `/opt/workspace/` RO, entrypoint uses `pixi shell-hook --frozen --no-install` to skip wheel rebuilds against RO mounts, and prepends conda-libmamba-solver to `PYTHONPATH` to shadow the pre-installed PyPI version. Raw data in [`data/phase4_linux/w4/`](data/phase4_linux/w4/) and baseline in [`data/phase1_linux/w4/`](data/phase1_linux/w4/). Stack-branch inventory clarified: `conda/track-b-stack` tip already contains B4 (`2a3325ef4`), so the doc's earlier "B4 not yet in the stack" note was stale — the Phase-4 stacked runs (including mac W4 from the previous changelog) measure all fixes in one tree. |

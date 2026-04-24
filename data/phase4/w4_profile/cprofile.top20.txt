@@ -1,0 +1,28 @@
+         38579524 function calls (35526040 primitive calls) in 47.558 seconds
+
+   Ordered by: cumulative time
+   List reduced from 6104 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    26/16    0.000    0.000   58.484    3.655 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1059(join)
+    26/16    0.001    0.000   58.484    3.655 {method 'join' of '_thread._ThreadHandle' objects}
+        1    0.000    0.000   43.891   43.891 /Users/jezdez/Code/git/conda/conda/__main__.py:1(<module>)
+        1    0.000    0.000   43.887   43.887 /Users/jezdez/Code/git/conda/conda/cli/main.py:91(main)
+        1    0.000    0.000   43.887   43.887 /Users/jezdez/Code/git/conda/conda/exception_handler.py:426(conda_exception_handler)
+        1    0.000    0.000   40.929   40.929 /Users/jezdez/Code/git/conda/conda/exception_handler.py:28(__call__)
+        1    0.000    0.000   40.894   40.894 /Users/jezdez/Code/git/conda/conda/cli/main.py:19(main_subshell)
+        1    0.000    0.000   40.894   40.894 /Users/jezdez/Code/git/conda/conda/cli/conda_argparse.py:168(do_call)
+        1    0.000    0.000   40.894   40.894 /Users/jezdez/Code/git/conda/conda/notices/core.py:112(wrapper)
+        1    0.008    0.008   40.894   40.894 /Users/jezdez/Code/git/conda/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   40.886   40.886 /Users/jezdez/Code/git/conda/conda/cli/install.py:271(install)
+        1    0.000    0.000   40.886   40.886 /Users/jezdez/Code/git/conda/conda/cli/install.py:518(handle_txn)
+        5    0.000    0.000   32.473    6.495 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+        5    0.000    0.000   29.938    5.988 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:133(stop)
+        4    0.000    0.000   28.933    7.233 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/concurrent/futures/_base.py:646(__exit__)
+        4    0.000    0.000   28.933    7.233 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/concurrent/futures/thread.py:220(shutdown)
+        1    0.000    0.000   27.141   27.141 /Users/jezdez/Code/git/conda/conda/core/link.py:365(execute)
+   191/10    0.001    0.000   26.880    2.688 /Users/jezdez/Code/git/conda/conda/plugins/manager.py:1025(extract_package)
+   191/10    0.002    0.000   26.879    2.688 /Users/jezdez/Code/git/conda/conda/plugins/package_extractors/conda.py:24(extract_conda_or_tarball)
+   191/10    0.003    0.000   26.189    2.619 /Users/jezdez/Code/git/conda-package-handling/src/conda_package_handling/api.py:55(extract)
+
+
