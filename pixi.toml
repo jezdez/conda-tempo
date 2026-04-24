@@ -248,6 +248,19 @@ depends-on = ["linux-volume"]
 cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh phase2"
 depends-on = ["linux-volume"]
 
+[tasks.linux-w4]
+description = "Run W4 cold-cache data-science install inside the Linux container against the full track-b workspace stack (bind-mounts local conda/cph/cps/libmamba-solver checkouts)"
+cmd = """docker run --rm \
+  -v $(pwd):/repo:ro \
+  -v conda-tempo-work:/work \
+  -v $(pwd)/docker/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro \
+  -v $(pwd)/../conda:/opt/workspace/conda:ro \
+  -v $(pwd)/../conda-package-handling:/opt/workspace/conda-package-handling:ro \
+  -v $(pwd)/../conda-package-streaming:/opt/workspace/conda-package-streaming:ro \
+  -v $(pwd)/../conda-libmamba-solver:/opt/workspace/conda-libmamba-solver:ro \
+  conda-tempo-linux bash /repo/docker/run_linux.sh w4"""
+depends-on = ["linux-volume"]
+
 [tasks.linux-scalene]
 cmd = "docker run --rm -v $(pwd):/repo:ro -v conda-tempo-work:/work conda-tempo-linux bash /repo/docker/run_linux.sh scalene"
 depends-on = ["linux-volume"]

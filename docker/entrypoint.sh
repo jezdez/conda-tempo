@@ -49,7 +49,24 @@ cd "${TEMPO_TEMPO}"
 # container sees pixi's PATH (including the bench/tools/conda shim),
 # CONDA_PREFIX, etc. This sidesteps the double-``pixi run`` wrap
 # problem when run_linux.sh internally invokes ``pixi run``.
-eval "$(pixi shell-hook --manifest-path "${TEMPO_TEMPO}/pixi.toml")"
+#
+# --frozen --no-install: skip dependency resolution and re-installation.
+# The env is pre-built at image build time; when the host bind-mounts
+# modified sibling repos (track-b-stack etc.) over /opt/workspace/*,
+# pixi would otherwise try to rebuild the editable wheels and fail
+# because the mounts are RO. The editable .pth files already point at
+# the bind-mounted paths, so the live source takes effect with no
+# re-install needed.
+eval "$(pixi shell-hook --frozen --no-install --manifest-path "${TEMPO_TEMPO}/pixi.toml")"
+
+# If the host has bind-mounted conda-libmamba-solver source at
+# /opt/workspace/conda-libmamba-solver (e.g. the track-b-b11 branch
+# for stacked Phase-4 runs), prepend it to PYTHONPATH so the
+# editable-ish override shadows the pixi-installed PyPI version.
+# Leaves unmounted runs unaffected.
+if [ -d "/opt/workspace/conda-libmamba-solver/conda_libmamba_solver" ]; then
+    export PYTHONPATH="/opt/workspace/conda-libmamba-solver:${PYTHONPATH:-}"
+fi
 
 # If no command supplied, drop into an interactive shell.
 if [ $# -eq 0 ]; then

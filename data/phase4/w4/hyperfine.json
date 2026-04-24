@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "command": "conda create -n bench_w4 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter",
+      "mean": 36.14359589546,
+      "stddev": 0.5012002767132969,
+      "median": 36.225514284460004,
+      "user": 12.512772953333334,
+      "system": 21.667267013333333,
+      "min": 35.60648274246,
+      "max": 36.59879065946,
+      "times": [
+        36.225514284460004,
+        36.59879065946,
+        35.60648274246
+      ],
+      "memory_usage_byte": [
+        267223040,
+        281870336,
+        304775168
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

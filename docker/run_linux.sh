@@ -13,6 +13,12 @@ case "${MODE}" in
     phase1-profile)       exec pixi run phase1-profile ;;
     phase2|phase2-pyperf) exec pixi run phase2-pyperf ;;
     phase2-memray)        exec pixi run phase2-memray ;;
+    w4)
+        # Invoke the bench script directly (not via ``pixi run``) because
+        # the baked-in pixi.toml may predate the w4 task definition. The
+        # entrypoint already overlaid /repo/bench/ over the image's copy.
+        exec bash "${TEMPO_TEMPO:-/opt/workspace/conda-tempo}/bench/workloads.sh" w4
+        ;;
     scalene)
         # Scalene doesn't have a single pixi task yet (macOS can't run
         # it due to the arm64e binary issue); invoke the harness

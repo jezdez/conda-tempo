@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 end-to-end rerun with full cps stack; cps-stack beats py-rattler on both platforms; GitHub survey of fast tar extractors documented |
+| **Status** | Phase 4 end-to-end rerun with full cps stack on both platforms; cps-stack beats py-rattler on both platforms; W4 cold-cache mac: 43.9 → 36.1 s (−18 %), Linux: 26.3 → 23.4 s (−11 %); GitHub survey of fast tar extractors documented |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -978,10 +978,14 @@ PR'd; see the per-repo branches:
 | **B14** | `conda/conda-package-streaming:jezdez/track-b-b14-extract-utime` | 3.4 % per extract (5-pkg fixture) | scales with total file count across installs |
 | **B20** | `conda/conda-package-streaming:jezdez/track-b-b20-safety-fast-path` | **+22.6 % on Linux, neutral on mac** | **beats py-rattler on Linux by 6.3 %**; subsumes B12 |
 
-B1 + B2 + B6 + B8 + B9c are cherry-picked into
-``conda/conda:jezdez/track-b-stack``. B4 and the cps/cph B12/B13
-pair are not yet in the stack (separate branches, would need another
-combined branch to measure together).
+B1 + B2 + B4 + B6 + B8 + B9c are all in
+``conda/conda:jezdez/track-b-stack`` (B4 cherry-picked at tip
+``2a3325ef4``). The cps fixes B13 + B14 + B20 live in
+``conda/conda-package-streaming:jezdez/track-b-stack``. B13's cph
+consumer remains on its own branch
+(``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile``)
+since it is the only cph-side change. The Phase-4 stacked runs below
+measure these four branch tips together via editable pixi installs.
 
 ##### S9 correction
 
@@ -1048,6 +1052,7 @@ tips via a bind-mount + ``pip install -e``.
 | W1 | 10.37 s | **7.46 s** | **−28 %** | 3.32 s | 3.06 s | −8 % |
 | W2 | 26.67 s | **24.24 s** | **−9 %** | 10.66 s | 10.76 s | neutral |
 | W3 | 36.44 s | **1.87 s** | **−95 % (19.5×)** | 19.41 s | **1.26 s** | **−94 % (15.4×)** |
+| W4 | 43.88 s ± 1.46 | **36.14 s ± 0.50** | **−18 % (−7.7 s)** | 26.28 s ± 0.94 | **23.38 s ± 0.62** | **−11 % (−2.9 s)** |
 
 Observations:
 
@@ -1068,6 +1073,36 @@ Observations:
   of ~2.5 s of extract work, which vanishes in W2's 10+ s total.
 - **Linux W1 picks up 8 %** from the cps-stack's extract speedup
   (W1's fetch/extract/link is a larger fraction of W1 than of W2).
+- **W4 cold-cache on macOS: 43.9 s → 36.1 s (−7.7 s, −18 %).** W4
+  is W2 with `pkgs/` wiped between every iteration so each run
+  pays fetch + extract + verify + link from cold. Of the 7.7 s
+  saved, 2.4 s is the same warm-cache saving seen on W2; the
+  remaining **5.3 s is cold-cache-specific and attributable to
+  the cps stack** (B13 + B14 + B20 collapsing the per-member
+  syscall count during extract). That's a 31 % reduction on the
+  ~17 s cold-cache portion of W4. Stddev also drops from ±1.46 s
+  to ±0.50 s — the B20 fast path removes most of the variance
+  stdlib tarfile's 15-lstat-per-file walk was introducing.
+  Raw data in [`data/phase4/w4/`](data/phase4/w4/); baseline is
+  [`data/phase1/w4/`](data/phase1/w4/).
+- **W4 cold-cache on Linux ext4: 26.3 s → 23.4 s (−2.9 s, −11 %).**
+  Absolute baseline is 1.7× faster than macOS (26 s vs 44 s on
+  the same workload) because ext4 is cheaper per-syscall than
+  APFS, so the stack saves less in absolute terms. Warm-cache
+  contribution (W2 Linux is neutral) is ~0 s, so essentially all
+  −2.9 s comes from the cps stack on the cold-cache portion. The
+  B9c codesign batching that dominated macOS W1/W2 gains does not
+  apply on Linux. Stddev tightens from ±0.94 s to ±0.62 s, same
+  pattern as macOS. Raw data in
+  [`data/phase4_linux/w4/`](data/phase4_linux/w4/); baseline is
+  [`data/phase1_linux/w4/`](data/phase1_linux/w4/). Harness fix:
+  the Docker image pins upstream SHAs for conda/cph/cps and
+  PyPI-installs libmamba-solver, so the stacked run bind-mounts
+  the four local track-b branches over `/opt/workspace/` and
+  prepends conda-libmamba-solver to `PYTHONPATH` to shadow the
+  pre-installed version; entrypoint uses
+  `pixi shell-hook --frozen --no-install` so no wheel rebuild is
+  attempted against the RO mounts. See `pixi run linux-w4`.
 
 Remaining headroom (after this full stack):
 
@@ -1123,6 +1158,8 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-26 | **Linux W4 measured on full stack.** 26.276 s ± 0.940 s baseline → **23.381 s ± 0.616 s stacked** (−2.9 s, −11 %), 3 runs, container ext4, `pkgs/` wiped between iterations. Smaller absolute and relative than macOS because the Linux baseline is already 1.7× faster (fs-capped) and B9c codesign batching does not apply. Stddev tightens from ±0.94 to ±0.62 s (same pattern as macOS — B20 fast path removes tarfile's per-member variance). Harness plumbing landed with this run: new `linux-w4` pixi task bind-mounts the four local track-b branches (conda / cph / cps / libmamba-solver) over `/opt/workspace/` RO, entrypoint uses `pixi shell-hook --frozen --no-install` to skip wheel rebuilds against RO mounts, and prepends conda-libmamba-solver to `PYTHONPATH` to shadow the pre-installed PyPI version. Raw data in [`data/phase4_linux/w4/`](data/phase4_linux/w4/) and baseline in [`data/phase1_linux/w4/`](data/phase1_linux/w4/). Stack-branch inventory clarified: `conda/track-b-stack` tip already contains B4 (`2a3325ef4`), so the doc's earlier "B4 not yet in the stack" note was stale — the Phase-4 stacked runs (including mac W4 from the previous changelog) measure all fixes in one tree. |
+| 2026-04-26 | **W4 (cold-cache) rerun on full stack, macOS.** 43.88 s ± 1.46 s → **36.14 s ± 0.50 s** (−7.7 s, −18 %), 3 runs, `pkgs/` wiped between every iteration, editable workspace stack on all four repos. Decomposes into 2.4 s of W2-equivalent warm-cache savings (conda + libmamba-solver) plus **5.3 s of cold-cache-specific savings** from the cps stack (B13 + B14 + B20), a 31 % reduction on the ~17 s cold-cache portion of W4. Stddev collapses from ±1.46 s to ±0.50 s because B20's fast path removes the per-member variance stdlib tarfile was contributing. Raw data in [`data/phase4/w4/`](data/phase4/w4/); baseline preserved in [`data/phase1/w4/`](data/phase1/w4/). Linux W4 deferred (container harness has no persistent `pkgs/` volume that survives the `--prepare` wipe yet). |
 | 2026-04-26 | **cps combined stack (B13+B14+B20) beats py-rattler on both platforms + Phase 4 rerun with full workspace stack + GitHub survey.** New ``conda/conda-package-streaming:jezdez/track-b-stack`` bundles B13 + B14 + B20. S16 fixture: macOS 3.43 s (vs cps main 3.71, rattler 3.67 — 8 % better than main, 7 % better than rattler); Linux 2.17 s (vs cps main 2.88, rattler 2.37 — 24.6 % better than main, 9.2 % better than rattler). Pure Python beats Rust on both platforms once the per-member syscall count is trimmed. Phase 4 end-to-end rerun with the full local workspace stack (conda stack + cps stack + cph consumer + libmamba-solver B11): **W1 mac 10.37 → 7.46 s (-28 %); W2 mac 26.67 → 24.24 s (-9 %); W3 mac 36.44 → 1.87 s (-95 %); W3 Linux 19.41 → 1.26 s (-94 %)**. GitHub survey of fast tar extractors (libarchive, tar-rs, rattler, uv, klauspost/compress, microtar, node-tar, stdlib tarfile) documents that the ecosystem collapses to three real backends (C libarchive, Rust tar-rs, Python stdlib tarfile) and the backend choice is not the bottleneck — B20 proves algorithmic changes to the per-member safety check beat a Rust rewrite on both platforms. |
 | 2026-04-26 | **B20: hybrid safety check beats Rust on Linux** (with a careful security audit). First sketch was "swap realpath for normpath" — rejected as a security regression (loses symlink-chain traversal protection). Second sketch was "use stdlib ``filter='data'`` and drop the manual check" — safer but platform-asymmetric (+7 % Linux, −7 % mac). Final shipped hybrid: start in fast-path mode using string-only ``normpath + startswith``; flip to full realpath the first time any member is a symlink / hardlink / has absolute name / contains ``..``. Safety is identical to the pre-B20 all-realpath check (no risky member → no symlinks on disk → string normalisation is sufficient; risky member → fallback kicks in before writing anything). Compatibility survey: 186 conda-forge archives, 30 299 members, 1 274 symlinks, 0 failures; 81 % of members take the fast path, 142 / 186 archives never trigger the fallback. Measured end-to-end on the S16 fixture: **Linux ext4 2.88 s → 2.23 s (+22.6 %) — faster than py-rattler's 2.38 s by 6.3 %**. macOS APFS is within noise (APFS caps file-creation rate at ~2300/s regardless of language). Implemented on ``conda/conda-package-streaming:jezdez/track-b-b20-safety-fast-path``, subsumes the earlier B12 branch. |
 | 2026-04-26 | **Rust-in-cps exploration (S16) + unpacking ceiling analysis.** Benchmarked ``rattler.package_streaming.extract`` (py-rattler, the Rust-backed extract shipped under the ``conda/`` org by prefix.dev) against cps's current stdlib-tarfile path on the same 5 real scientific-Python ``.conda`` archives. Results: **macOS APFS within noise** (both ~80 MB/s, ~2300 files/s); **Linux ext4 ~12 % faster in rattler's favour** (557 vs 495 MB/s, 6787 vs 6033 files/s). Headline finding: extract is *syscall-bound*, not CPU-bound — Rust's advantage over Python + stdlib tarfile is only the per-call Python overhead and stdlib tarfile's 15-lstat-per-file path-resolution cost. The filesystem ceiling is what we hit on both platforms. Added an "Unpacking: where the limits actually are" section to the doc with three practical adoption paths for py-rattler in cps (optional fast path / hard-dep swap / cph absorb + rattler backend) and a strategic takeaway that Rust adoption here is about ecosystem alignment and maintenance-surface reduction, not speed. [Superseded by B20 — pure Python can beat Rust here, which the next changelog entry confirms.] |
