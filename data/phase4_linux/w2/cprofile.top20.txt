@@ -1,0 +1,28 @@
+         55827262 function calls (50959443 primitive calls) in 46.169 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5897 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    26/16    0.000    0.000   54.775    3.423 /opt/workspace/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1059(join)
+    26/16    0.001    0.000   54.775    3.423 {method 'join' of '_thread._ThreadHandle' objects}
+        1    0.000    0.000   37.758   37.758 /opt/workspace/conda/conda/__main__.py:1(<module>)
+        1    0.000    0.000   37.754   37.754 /opt/workspace/conda/conda/cli/main.py:91(main)
+        1    0.000    0.000   37.754   37.754 /opt/workspace/conda/conda/exception_handler.py:426(conda_exception_handler)
+        1    0.000    0.000   32.388   32.388 /opt/workspace/conda/conda/exception_handler.py:28(__call__)
+        1    0.000    0.000   32.305   32.305 /opt/workspace/conda/conda/cli/main.py:19(main_subshell)
+        1    0.000    0.000   32.305   32.305 /opt/workspace/conda/conda/cli/conda_argparse.py:168(do_call)
+        1    0.000    0.000   32.305   32.305 /opt/workspace/conda/conda/notices/core.py:112(wrapper)
+        1    0.007    0.007   32.305   32.305 /opt/workspace/conda/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   32.298   32.298 /opt/workspace/conda/conda/cli/install.py:271(install)
+        1    0.000    0.000   32.297   32.297 /opt/workspace/conda/conda/cli/install.py:518(handle_txn)
+        4    0.000    0.000   31.442    7.860 /opt/workspace/conda-tempo/.pixi/envs/default/lib/python3.13/concurrent/futures/_base.py:646(__exit__)
+        4    0.000    0.000   31.442    7.860 /opt/workspace/conda-tempo/.pixi/envs/default/lib/python3.13/concurrent/futures/thread.py:220(shutdown)
+        5    0.000    0.000   28.230    5.646 /opt/workspace/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+    225/9    0.001    0.000   27.775    3.086 /opt/workspace/conda/conda/plugins/manager.py:1025(extract_package)
+    225/9    0.002    0.000   27.774    3.086 /opt/workspace/conda/conda/plugins/package_extractors/conda.py:24(extract_conda_or_tarball)
+    225/9    0.004    0.000   27.450    3.050 /opt/workspace/conda-package-handling/src/conda_package_handling/api.py:55(extract)
+   215/18    0.002    0.000   27.281    1.516 /opt/workspace/conda-package-handling/src/conda_package_handling/conda_fmt.py:43(extract)
+        5    0.000    0.000   23.639    4.728 /opt/workspace/conda/conda/plugins/reporter_backends/console.py:133(stop)
+
+

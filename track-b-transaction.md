@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 end-to-end rerun with full cps stack on both platforms; cps-stack beats py-rattler on both platforms; W4 cold-cache mac: 43.9 → 36.1 s (−18 %), Linux: 26.3 → 23.4 s (−11 %); GitHub survey of fast tar extractors documented |
+| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; B9b confirmed non-fix; cps-stack beats py-rattler on both platforms |
 | **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -1051,7 +1051,8 @@ tips via a bind-mount + ``pip install -e``.
 |---|---:|---:|---:|---:|---:|---:|
 | W1 | 10.37 s | **7.46 s** | **−28 %** | 3.32 s | 3.06 s | −8 % |
 | W2 | 26.67 s | **24.24 s** | **−9 %** | 10.66 s | 10.76 s | neutral |
-| W3 | 36.44 s | **1.87 s** | **−95 % (19.5×)** | 19.41 s | **1.26 s** | **−94 % (15.4×)** |
+| W3 (5k) | 36.44 s | **1.87 s** | **−95 % (19.5×)** | 19.41 s | **1.26 s** | **−94 % (15.4×)** |
+| W3 (50k) | >300 s (intractable) | **12.44 s ± 1.37** | **>24×** | >300 s (intractable) | **8.03 s ± 0.05** | **>37×** |
 | W4 | 43.88 s ± 1.46 | **36.14 s ± 0.50** | **−18 % (−7.7 s)** | 26.28 s ± 0.94 | **23.38 s ± 0.62** | **−11 % (−2.9 s)** |
 
 Observations:
@@ -1104,13 +1105,52 @@ Observations:
   `pixi shell-hook --frozen --no-install` so no wheel rebuild is
   attempted against the RO mounts. See `pixi run linux-w4`.
 
-Remaining headroom (after this full stack):
+Remaining headroom (measured, not inferred — `time_recorder` and
+`tottime` cProfile data for the stacked runs is in
+[`data/phase4/`](data/phase4/) and
+[`data/phase4_linux/`](data/phase4_linux/)).
 
-- macOS W2 at 24.2 s: still dominated by ``posix.link`` (~9 s, S7
-  — Linux-regressing so not shippable as a default), pyc compile
-  (already aggregated), and ~3 s of link/metadata work.
-- Linux W1/W2: very little remaining, mostly filesystem-bound.
-- W3: essentially on the noise floor.
+- **macOS W2 at 24.2 s** splits as: `unlink_link_execute` 16.63 s,
+  `unlink_link_prepare_and_verify` 3.11 s, solver+index ~0.75 s,
+  rest ~3.6 s. Top `tottime` sinks: **`posix.link` 9.33 s / 25 984
+  calls** (would be the S7 parallel-link win if Linux didn't regress
+  — unshippable as a default), `time.sleep` 7.43 s (executor join
+  waits), `posix.lstat` 1.13 s, `auxlib.entity` 1.13 s (Track A A19
+  would help here when it lands). The single `compile_multiple_pyc`
+  subprocess accounts for 6.52 s and the single
+  `flush_pending_codesign` (B9c) for 0.58 s after batching 185
+  enqueued codesign calls.
+- **macOS W1 at 7.46 s** splits as: `unlink_link_execute` 3.54 s,
+  `unlink_link_prepare_and_verify` 1.26 s (down from 5.53 s baseline
+  — B4 active), solver ~0.1 s on a warm cache, rest is interpreter
+  + argparse + plugin discovery (Track A territory).
+  `compile_multiple_pyc` and `flush_pending_codesign` together
+  account for the bulk of the remainder.
+- **Linux W2 at 10.76 s** is filesystem-bound and has no single
+  dominant tottime sink. Top: `time.sleep` 4.31 s (executor
+  waits), libmamba solver index setup 4.05 + 4.05 s
+  (`_set_repo_priorities` + `_load_installed`; these are one-shot
+  per solve so B11 does not help W2's empty-prefix case), `lstat`
+  1.14 s, zstd decompression 0.8 s. `posix.link` is not in the
+  tottime top-10, consistent with ext4 being 20× faster at inode
+  creation than APFS.
+- **Linux W1 at 3.06 s** is essentially Python startup + a handful
+  of `noarch` link actions. `unlink_link_execute` is 1.35 s,
+  `prepare_and_verify` 1.02 s. No obvious further wins at this size.
+- **W3 at 50k on the stack** scales sublinearly from the 5k stacked
+  baseline (mac 1.87 → 12.44 s is 6.6× for 10× data, Linux 1.26 →
+  8.03 s is 6.4× for 10× data). With B1 + B2 + B11 stacked the solve
+  becomes constant-ish and the post-solve path is dominated by
+  loading 50k `conda-meta/*.json` files — which is now the new
+  bottleneck at this scale. Track A's A21 (PrefixData I/O
+  optimization, merged) already addressed this in the other
+  direction; further wins would require batched JSON reads or a
+  prefix-level cache.
+- **B9b (end-of-transaction pyc batching) confirmed non-fix**:
+  the macOS W2 stacked profile shows `compile_multiple_pyc` is
+  called exactly once per transaction for all packages, so
+  `AggregateCompileMultiPycAction` is already the end-of-transaction
+  batch that B9b was speculatively proposing.
 
 For context, the pre-cps-fixes stacked numbers (conda + libmamba
 solver only, without cps fixes) were:
@@ -1158,6 +1198,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-27 | **W3 at 50k records on the stack + stacked-run profiles + B9b close-out.** Reseeded `bench_big` at 50k records (the original intractable case that got downgraded to 5k in Phase 0) and ran hyperfine against the full stack: **mac 12.44 s ± 1.37 s (>24× vs the >300 s stock-conda intractable baseline); Linux 8.03 s ± 0.05 s (>37×)**. With B1+B2+B11 stacked the solve is constant-ish and the 50k-record post-solve path scales sublinearly vs 5k (mac 1.87 → 12.44 s is 6.6× for 10× data, Linux 1.26 → 8.03 s is 6.4×). cProfile + `time_recorder` on the stacked W1 and W2 runs (both platforms) committed to [`data/phase4/<w>/`](data/phase4/) and [`data/phase4_linux/<w>/`](data/phase4_linux/), and the "remaining headroom" bullets in Phase 4 are now measured rather than inferred. Standout: macOS W2's remaining 24 s still has `posix.link` as its single biggest tottime sink at **9.33 s / 25 984 calls** — this is exactly the S7 parallel-link signal that regresses on Linux ext4 and was correctly dropped as a default. **B9b closed out as a non-fix**: the stacked W2 profile shows `compile_multiple_pyc` is called exactly once per transaction across all ~186 `noarch: python` packages, confirming `AggregateCompileMultiPycAction` is already the end-of-transaction batch that B9b was speculatively proposing. B9c analogously: 185 `_enqueue_codesign` calls flushed into 1 `flush_pending_codesign` subprocess (0.58 s). Harness: `run_cprofile.py` and `parse_time_recorder.py` gained a `--phase` arg so Phase-4 stacked profiles don't clobber the Phase-1 baselines. |
 | 2026-04-26 | **Linux W4 measured on full stack.** 26.276 s ± 0.940 s baseline → **23.381 s ± 0.616 s stacked** (−2.9 s, −11 %), 3 runs, container ext4, `pkgs/` wiped between iterations. Smaller absolute and relative than macOS because the Linux baseline is already 1.7× faster (fs-capped) and B9c codesign batching does not apply. Stddev tightens from ±0.94 to ±0.62 s (same pattern as macOS — B20 fast path removes tarfile's per-member variance). Harness plumbing landed with this run: new `linux-w4` pixi task bind-mounts the four local track-b branches (conda / cph / cps / libmamba-solver) over `/opt/workspace/` RO, entrypoint uses `pixi shell-hook --frozen --no-install` to skip wheel rebuilds against RO mounts, and prepends conda-libmamba-solver to `PYTHONPATH` to shadow the pre-installed PyPI version. Raw data in [`data/phase4_linux/w4/`](data/phase4_linux/w4/) and baseline in [`data/phase1_linux/w4/`](data/phase1_linux/w4/). Stack-branch inventory clarified: `conda/track-b-stack` tip already contains B4 (`2a3325ef4`), so the doc's earlier "B4 not yet in the stack" note was stale — the Phase-4 stacked runs (including mac W4 from the previous changelog) measure all fixes in one tree. |
 | 2026-04-26 | **W4 (cold-cache) rerun on full stack, macOS.** 43.88 s ± 1.46 s → **36.14 s ± 0.50 s** (−7.7 s, −18 %), 3 runs, `pkgs/` wiped between every iteration, editable workspace stack on all four repos. Decomposes into 2.4 s of W2-equivalent warm-cache savings (conda + libmamba-solver) plus **5.3 s of cold-cache-specific savings** from the cps stack (B13 + B14 + B20), a 31 % reduction on the ~17 s cold-cache portion of W4. Stddev collapses from ±1.46 s to ±0.50 s because B20's fast path removes the per-member variance stdlib tarfile was contributing. Raw data in [`data/phase4/w4/`](data/phase4/w4/); baseline preserved in [`data/phase1/w4/`](data/phase1/w4/). Linux W4 deferred (container harness has no persistent `pkgs/` volume that survives the `--prepare` wipe yet). |
 | 2026-04-26 | **cps combined stack (B13+B14+B20) beats py-rattler on both platforms + Phase 4 rerun with full workspace stack + GitHub survey.** New ``conda/conda-package-streaming:jezdez/track-b-stack`` bundles B13 + B14 + B20. S16 fixture: macOS 3.43 s (vs cps main 3.71, rattler 3.67 — 8 % better than main, 7 % better than rattler); Linux 2.17 s (vs cps main 2.88, rattler 2.37 — 24.6 % better than main, 9.2 % better than rattler). Pure Python beats Rust on both platforms once the per-member syscall count is trimmed. Phase 4 end-to-end rerun with the full local workspace stack (conda stack + cps stack + cph consumer + libmamba-solver B11): **W1 mac 10.37 → 7.46 s (-28 %); W2 mac 26.67 → 24.24 s (-9 %); W3 mac 36.44 → 1.87 s (-95 %); W3 Linux 19.41 → 1.26 s (-94 %)**. GitHub survey of fast tar extractors (libarchive, tar-rs, rattler, uv, klauspost/compress, microtar, node-tar, stdlib tarfile) documents that the ecosystem collapses to three real backends (C libarchive, Rust tar-rs, Python stdlib tarfile) and the backend choice is not the bottleneck — B20 proves algorithmic changes to the per-member safety check beat a Rust rewrite on both platforms. |

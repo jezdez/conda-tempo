@@ -1,0 +1,96 @@
+{
+  "conda.core.prefix_data.PrefixData.load": {
+    "call_count": 39,
+    "samples_seconds": [
+      1.7e-05,
+      5.8e-05,
+      3.8e-05,
+      1.6e-05,
+      6.8e-05,
+      1.4e-05,
+      1e-05,
+      8e-06,
+      8e-06,
+      8e-06,
+      9e-06,
+      2.2e-05,
+      8e-06,
+      7e-06,
+      1.1e-05,
+      8e-06,
+      1.1e-05,
+      9e-06,
+      8e-06,
+      9e-06,
+      8e-06,
+      8e-06,
+      8e-06,
+      8e-06,
+      8e-06,
+      7e-06,
+      7e-06,
+      8e-06,
+      7e-06,
+      8e-06,
+      7e-06,
+      8e-06,
+      7e-06,
+      8e-06,
+      7e-06,
+      0.018784,
+      2.8e-05,
+      3e-05,
+      6.5e-05
+    ],
+    "total_seconds": 0.01937079429626465
+  },
+  "conda_libmamba_solver.index.LibMambaIndexHelper._load_repo_info_from_repodata_dict": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.035142
+    ],
+    "total_seconds": 0.03514242172241211
+  },
+  "conda_libmamba_solver.solver.LibMambaSolver._collect_all_metadata": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.074338
+    ],
+    "total_seconds": 0.07433795928955078
+  },
+  "conda_libmamba_solver.solver.LibMambaSolver._solving_loop": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.067091
+    ],
+    "total_seconds": 0.06709098815917969
+  },
+  "fetch_extract_execute": {
+    "call_count": 1,
+    "samples_seconds": [
+      2.7e-05
+    ],
+    "total_seconds": 2.6941299438476562e-05
+  },
+  "fetch_extract_prepare": {
+    "call_count": 1,
+    "samples_seconds": [
+      0.005377
+    ],
+    "total_seconds": 0.005377054214477539
+  },
+  "unlink_link_execute": {
+    "call_count": 1,
+    "samples_seconds": [
+      1.352735
+    ],
+    "total_seconds": 1.3527352809906006
+  },
+  "unlink_link_prepare_and_verify": {
+    "call_count": 1,
+    "samples_seconds": [
+      1.017638
+    ],
+    "total_seconds": 1.0176384449005127
+  }
+}

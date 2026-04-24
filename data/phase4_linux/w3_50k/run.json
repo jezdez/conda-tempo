@@ -1,0 +1,1 @@
+{"date":"2026-04-26T23:05:00Z","records":50000,"stack":"conda/track-b-stack + cps/track-b-stack + cph/track-b-b13-reuse-zipfile + conda-libmamba-solver/track-b-b11-cache-installed","note":"bench_big reseeded to 50k records inside Linux container before run","platform":"linux-aarch64 (OrbStack)"}

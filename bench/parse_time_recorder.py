@@ -27,12 +27,16 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA = REPO_ROOT / "data" / "phase1"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("workload")
+    ap.add_argument(
+        "--phase",
+        default="phase1",
+        help="output dir under data/ (default: phase1; use e.g. phase4 for stacked runs)",
+    )
     ap.add_argument("args", nargs=argparse.REMAINDER)
     ns = ap.parse_args()
 
@@ -84,7 +88,7 @@ def main() -> int:
             "samples_seconds": samples,
         }
 
-    out_dir = DATA / ns.workload
+    out_dir = REPO_ROOT / "data" / ns.phase / ns.workload
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "time_recorder.json"
     out_path.write_text(json.dumps(markers, indent=2, sort_keys=True))

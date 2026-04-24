@@ -1,0 +1,1 @@
+{"conda_version":"26.3.3.dev54","date":"2026-04-26T22:42:45Z","records":50000,"stack":"conda/track-b-stack + cps/track-b-stack + cph/track-b-b13-reuse-zipfile + conda-libmamba-solver/track-b-b11-cache-installed","note":"bench_big reseeded to 50k records before run"}
