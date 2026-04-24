@@ -33,6 +33,15 @@
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
 > 2026-04-27._
 
+**TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
+commands against large existing prefixes.** The latter is the
+user-visible story (``conda update --all`` on a long-lived research
+env went from intractable to ~10 s); the former is the steady
+background improvement. Everything below is measured wall time from
+hyperfine on macOS (M1 Pro / APFS) and arm64 Linux (OrbStack / ext4)
+against stock conda on the same hardware; Windows and x86_64 Linux
+are not yet measured.
+
 conda's perceived slowness after a user hits enter on `conda install`
 has two components: the solver (solved separately, not in scope here)
 and the post-solver transaction pipeline that verifies, downloads,
@@ -55,23 +64,32 @@ hardware:
 
 ### Headline results
 
-- **Large-prefix commands that were intractable are now fast.**
-  A `conda install --dry-run --no-deps` against a 50 000-record
-  prefix did not finish in 5 minutes on stock conda; on the full
-  stack it takes 8–12 s. `conda update --all` against long-lived
-  research envs was the workload users complained about most and
-  it is what this stack most directly addresses.
-- **Cold-cache installs speed up measurably on both platforms.**
-  The cps side of the stack (B13 + B14 + B20) does strictly
-  fewer per-member syscalls than stdlib tarfile's default path
-  and, on Linux, than py-rattler's Rust implementation. A 5-package
-  scientific-Python extract drops from 3.71 s to 3.43 s on macOS
-  and from 2.88 s to 2.17 s on Linux.
-- **On warm-cache small installs (W1), macOS gains 28 % almost
-  entirely from B9c (codesign batching) and a handful of
-  Python-level fixes.** Linux gains 8 % and is mostly
-  filesystem-bound after that — ext4 creates inodes 20× faster
-  than APFS so the remaining ceiling is essentially the kernel.
+Broken out by workload type — the stack is not uniform across them:
+
+- **Small warm-cache installs (W1):** saves ~3 s on macOS
+  (−28 %), ~0.3 s on Linux (−8 %). Filesystem-bound after that;
+  ext4 creates inodes 20× faster than APFS so Linux hits its
+  ceiling early.
+- **Large warm-cache installs (W2, ~150 pkgs):** saves ~2.4 s on
+  macOS (−9 %), neutral on Linux. `posix.link` and pyc compile
+  dominate what remains on mac (S7 was rejected as a default
+  because it regresses Linux).
+- **Cold-cache installs (W4, CI or first-run):** saves ~8 s on
+  macOS (−18 %), ~3 s on Linux (−11 %). The cps stack (B13 + B14
+  + B20) carries this on both platforms and on Linux beats
+  py-rattler's Rust extract by ~6 %.
+- **Commands against large existing prefixes (W3):** saves **20×
+  to 40×** wall time. A `conda install --dry-run --no-deps`
+  against a 50 000-record prefix did not finish in a 5-minute
+  timeout on stock conda; on the full stack it takes 8–12 s.
+  `conda update --all` on long-lived research envs — the
+  workload users complain about most — is what this most directly
+  addresses.
+- **Cps extract path beats stdlib tarfile and py-rattler.** A
+  5-package scientific-Python extract drops from 3.71 s to 3.43 s
+  on macOS and from 2.88 s to 2.17 s on Linux. B20's
+  per-member safety-check fast path does strictly fewer syscalls
+  than both alternatives.
 
 ### What shipped
 
