@@ -13,6 +13,7 @@
 
 ## Contents
 
+- [Executive Summary](#executive-summary)
 - [Scope](#scope)
 - [Background](#background)
 - [Suspect hot spots](#suspect-hot-spots)
@@ -24,6 +25,124 @@
 - [Scope rules](#scope-rules)
 - [Out of scope](#out-of-scope)
 - [Changelog](#changelog)
+
+---
+
+## Executive Summary
+
+> _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
+> 2026-04-27._
+
+conda's perceived slowness after a user hits enter on `conda install`
+has two components: the solver (solved separately, not in scope here)
+and the post-solver transaction pipeline that verifies, downloads,
+extracts, and links packages onto disk. Track B measures and fixes
+the post-solver pipeline without touching the progress output users see.
+
+After thirteen weeks of investigation, a stack of eleven small fixes
+across four repositories (`conda`, `conda-libmamba-solver`,
+`conda-package-handling`, `conda-package-streaming`) delivers the
+following end-to-end speedups against stock conda on identical
+hardware:
+
+| Workload | mac baseline | mac full stack | Δ | Linux baseline | Linux full stack | Δ |
+|---|---:|---:|---:|---:|---:|---:|
+| W1 (fresh install, small) | 10.37 s | **7.46 s** | **−28 %** | 3.32 s | 3.06 s | −8 % |
+| W2 (data-science install, ~150 pkgs) | 26.67 s | **24.24 s** | −9 % | 10.66 s | 10.76 s | neutral |
+| W3 (synthetic 5k-record prefix) | 36.44 s | **1.87 s** | **−95 % (19.5×)** | 19.41 s | **1.26 s** | **−94 % (15.4×)** |
+| W3 (synthetic 50k-record prefix) | > 300 s (intractable) | **12.44 s** | **> 24×** | > 300 s (intractable) | **8.03 s** | **> 37×** |
+| W4 (cold-cache data-science) | 43.88 s | **36.14 s** | −18 % | 26.28 s | **23.38 s** | −11 % |
+
+### Headline results
+
+- **Large-prefix commands that were intractable are now fast.**
+  A `conda install --dry-run --no-deps` against a 50 000-record
+  prefix did not finish in 5 minutes on stock conda; on the full
+  stack it takes 8–12 s. `conda update --all` against long-lived
+  research envs was the workload users complained about most and
+  it is what this stack most directly addresses.
+- **Cold-cache installs speed up measurably on both platforms.**
+  The cps side of the stack (B13 + B14 + B20) does strictly
+  fewer per-member syscalls than stdlib tarfile's default path
+  and, on Linux, than py-rattler's Rust implementation. A 5-package
+  scientific-Python extract drops from 3.71 s to 3.43 s on macOS
+  and from 2.88 s to 2.17 s on Linux.
+- **On warm-cache small installs (W1), macOS gains 28 % almost
+  entirely from B9c (codesign batching) and a handful of
+  Python-level fixes.** Linux gains 8 % and is mostly
+  filesystem-bound after that — ext4 creates inodes 20× faster
+  than APFS so the remaining ceiling is essentially the kernel.
+
+### What shipped
+
+Five fixes in `conda`, one in `conda-libmamba-solver`, three in
+`conda-package-streaming`, one in `conda-package-handling`, plus
+three dropped or rescoped after measurement:
+
+| ID | Repo | Fixes | Phase 2 signal | Shipping status |
+|---|---|---|---|---|
+| B1 | conda | Quadratic diff sort | 782× at N=50 000 | on stack |
+| B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | on stack |
+| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB | on stack |
+| B6 | conda | Opt-in parallel `_verify_individual_level` | 1.26× at K=2 | on stack (opt-in only) |
+| B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
+| B8 | conda | `EXTRACT_THREADS = 2` (was `min(cpu, 3)`) | Linux regresses at K ≥ 3 by 28–40 % | on stack |
+| B9a | conda | pyc batching across packages | misidentified — already batched | dropped |
+| B9b | conda | end-of-transaction pyc batch | confirmed already-batched via stacked profile | dropped |
+| B9c | conda | Codesign batching for osx-arm64 rewrites | W1 mac −33 %, W2 mac −15 % | on stack |
+| B11 | conda-libmamba-solver | Cache `SolverInputState.installed` | 6500× per-access | on stack |
+| B12 | cps | Per-member path-safety (dest-dir memo) | 20 % per-member | superseded by B20 |
+| B13 | cps + cph | Parse `.conda` ZipFile once per package | 2× per archive | on stack |
+| B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract | on stack |
+| B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | on stack |
+
+Total: ~250 LOC across all four repositories, no new dependencies,
+no architectural changes, Python 3.10+.
+
+### Remaining headroom
+
+The stacked profiles in
+[`data/phase4/`](data/phase4/) and
+[`data/phase4_linux/`](data/phase4_linux/) make the remaining
+bottleneck directly observable rather than speculative:
+
+- **macOS W2's biggest single remaining cost is `posix.link` at
+  9.3 s / 25 984 calls.** Parallelising it wins on APFS (1.5× at
+  K=4) but regresses on Linux ext4 (2–3× *slower*) because the
+  kernel already serialises inode creation faster than Python's
+  executor overhead. The S7 fix is correctly dropped as a default.
+  A slow-disk heuristic could reclaim the macOS win without hurting
+  Linux, but would require measurement before merging.
+- **`auxlib.entity` descriptor dispatch is ~1.1 s of W2 mac
+  `tottime`.** This is Track A territory — A19 (Entity →
+  `@dataclass(slots=True)`) is pending, and would land that saving
+  across any Track B workload on dataclasses.
+- **Linux W2 at 10.8 s is filesystem-bound** with no dominant
+  `tottime` sink in the top-10. One-shot libmamba setup calls
+  (`_set_repo_priorities`, `_load_installed`) and `time.sleep`
+  in the executor dominate. No obvious further Python-level wins.
+- **Large-prefix commands are now dominated by loading 50 000
+  `conda-meta/*.json` files.** Track A A21 (PrefixData I/O)
+  already tackled this direction; a prefix-level mtime-cache or
+  batched JSON reads would be the next incremental step.
+
+### Next steps
+
+None of the eleven branches have been submitted as PRs yet. The
+nearest-term work is:
+
+1. Push the eleven branches as stacked PRs across the four
+   repositories and draft a `news/` entry per PR per the Track A
+   convention.
+2. Get Windows CI on the branches that touch `gateways/disk/*`
+   (B6, B8) and verify menuinst-adjacent paths; Track B currently
+   has zero Windows measurements.
+3. Add Linux x86_64 numbers to complement the arm64 ones; all
+   CI and most prod installs are x86_64 and syscall costs are
+   not perfectly identical to arm64.
+4. Measure S10 (`CreatePrefixRecordAction` per-record JSON writes
+   on NTFS with antivirus) — the only original suspect that was
+   never benchmarked.
 
 ---
 
@@ -1196,8 +1315,14 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 ## Changelog
 
+> When adding an entry here, also refresh the
+> [Executive Summary](#executive-summary) so its numbers, headline
+> results, shipping table, and "last refreshed" date stay in sync
+> with the latest measurements.
+
 | Date | Change |
 |---|---|
+| 2026-04-27 | **Executive Summary section added.** Placed between Contents and Scope, structured like Track A's (narrative → headline results → shipping table → remaining headroom → next steps). Kept in sync with the Changelog going forward; carries its own "Last refreshed" date. No new measurements; reflects the state after the 2026-04-27 W3@50k + stacked profile commit. |
 | 2026-04-27 | **W3 at 50k records on the stack + stacked-run profiles + B9b close-out.** Reseeded `bench_big` at 50k records (the original intractable case that got downgraded to 5k in Phase 0) and ran hyperfine against the full stack: **mac 12.44 s ± 1.37 s (>24× vs the >300 s stock-conda intractable baseline); Linux 8.03 s ± 0.05 s (>37×)**. With B1+B2+B11 stacked the solve is constant-ish and the 50k-record post-solve path scales sublinearly vs 5k (mac 1.87 → 12.44 s is 6.6× for 10× data, Linux 1.26 → 8.03 s is 6.4×). cProfile + `time_recorder` on the stacked W1 and W2 runs (both platforms) committed to [`data/phase4/<w>/`](data/phase4/) and [`data/phase4_linux/<w>/`](data/phase4_linux/), and the "remaining headroom" bullets in Phase 4 are now measured rather than inferred. Standout: macOS W2's remaining 24 s still has `posix.link` as its single biggest tottime sink at **9.33 s / 25 984 calls** — this is exactly the S7 parallel-link signal that regresses on Linux ext4 and was correctly dropped as a default. **B9b closed out as a non-fix**: the stacked W2 profile shows `compile_multiple_pyc` is called exactly once per transaction across all ~186 `noarch: python` packages, confirming `AggregateCompileMultiPycAction` is already the end-of-transaction batch that B9b was speculatively proposing. B9c analogously: 185 `_enqueue_codesign` calls flushed into 1 `flush_pending_codesign` subprocess (0.58 s). Harness: `run_cprofile.py` and `parse_time_recorder.py` gained a `--phase` arg so Phase-4 stacked profiles don't clobber the Phase-1 baselines. |
 | 2026-04-26 | **Linux W4 measured on full stack.** 26.276 s ± 0.940 s baseline → **23.381 s ± 0.616 s stacked** (−2.9 s, −11 %), 3 runs, container ext4, `pkgs/` wiped between iterations. Smaller absolute and relative than macOS because the Linux baseline is already 1.7× faster (fs-capped) and B9c codesign batching does not apply. Stddev tightens from ±0.94 to ±0.62 s (same pattern as macOS — B20 fast path removes tarfile's per-member variance). Harness plumbing landed with this run: new `linux-w4` pixi task bind-mounts the four local track-b branches (conda / cph / cps / libmamba-solver) over `/opt/workspace/` RO, entrypoint uses `pixi shell-hook --frozen --no-install` to skip wheel rebuilds against RO mounts, and prepends conda-libmamba-solver to `PYTHONPATH` to shadow the pre-installed PyPI version. Raw data in [`data/phase4_linux/w4/`](data/phase4_linux/w4/) and baseline in [`data/phase1_linux/w4/`](data/phase1_linux/w4/). Stack-branch inventory clarified: `conda/track-b-stack` tip already contains B4 (`2a3325ef4`), so the doc's earlier "B4 not yet in the stack" note was stale — the Phase-4 stacked runs (including mac W4 from the previous changelog) measure all fixes in one tree. |
 | 2026-04-26 | **W4 (cold-cache) rerun on full stack, macOS.** 43.88 s ± 1.46 s → **36.14 s ± 0.50 s** (−7.7 s, −18 %), 3 runs, `pkgs/` wiped between every iteration, editable workspace stack on all four repos. Decomposes into 2.4 s of W2-equivalent warm-cache savings (conda + libmamba-solver) plus **5.3 s of cold-cache-specific savings** from the cps stack (B13 + B14 + B20), a 31 % reduction on the ~17 s cold-cache portion of W4. Stddev collapses from ±1.46 s to ±0.50 s because B20's fast path removes the per-member variance stdlib tarfile was contributing. Raw data in [`data/phase4/w4/`](data/phase4/w4/); baseline preserved in [`data/phase1/w4/`](data/phase1/w4/). Linux W4 deferred (container harness has no persistent `pkgs/` volume that survives the `--prepare` wipe yet). |
