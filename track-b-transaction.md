@@ -274,6 +274,12 @@ Other cph code (``create``, ``transmute``, ``validate_converted_files_match_stre
 only during package building / conversion / introspection, not
 during installs.
 
+#### @dholth subinterpreter note
+
+[test_extract_subinterp.py](https://github.com/dholth/conda/blob/857a0447baf6f1f8709d5ccf7dec159e391b9cf3/tests/test_extract_subinterp.py) shows that we do run into Python GIL limits when extracting `.conda`. It requires the [compression.zstd branch of conda-package-streaming](https://github.com/conda/conda-package-streaming/tree/pyzstd-compression) because the zstandard extension doesn't run in subinterpreters. On OSX we can get value from 3-6 interpreters which each have their own GIL.
+
+When extracting `.tar.bz2` we are able to get benefit from threads because more work happens in the bzip2 module which drops GIL, but a typical conda user probably only uses `.conda` packages now.
+
 #### Unpacking speedups: the full picture
 
 Single-package extract cProfile (3 real scientific-Python .conda
