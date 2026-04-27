@@ -240,9 +240,8 @@ ship with conda:
 Phase-2 S8 (extract pool), S12 (per-member path-safety syscalls), S13
 (double ZipFile parse), S14 (Python-level chunked checksum), and S15
 (cph-vs-cps dispatch overhead) all live in these repos, not in conda
-itself. Both are checked out at
-``~/Code/git/conda-package-{handling,streaming}`` and installed
-source-editable into the devenv via pixi.toml (path-editable
+itself. Both are checked out as siblings of this repository and
+installed source-editable into the devenv via pixi.toml (path-editable
 [pypi-dependencies]); [`docker/Dockerfile`](docker/Dockerfile) pins
 each at a specific SHA. All Phase-2 numbers for S8+ benchmark the
 workspace checkouts, not the conda-forge shipped versions.

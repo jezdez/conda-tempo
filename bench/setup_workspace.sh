@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # Install conda-package-handling (cph) and conda-package-streaming (cps)
 # source-editable in the currently activated conda devenv, so the
-# benchmark harness measures the workspace checkouts at
-# ~/Code/git/conda-package-{handling,streaming} instead of the
+# benchmark harness measures local workspace checkouts instead of the
 # conda-forge shipped versions.
 #
 # Usage:
-#     source ~/Code/git/conda/dev/start -p 3.13 -i miniforge
+#     source <path-to>/conda/dev/start -p 3.13 -i miniforge
 #     bench/setup_workspace.sh
 #
 # Idempotent: rerunning upgrades the editable installs in-place.
 # Re-run after every dev/start -u (which rebuilds the env and can
 # clobber user pip installs).
 #
-# Requires both repos checked out under ~/Code/git/:
-#     ~/Code/git/conda-package-handling   (branch: main or a feature branch)
-#     ~/Code/git/conda-package-streaming  (branch: main or a feature branch)
+# Expects conda-package-handling and conda-package-streaming to be
+# checked out as siblings of this repository (e.g. all under the same
+# parent directory). Override the parent path via $TEMPO_WORKSPACE if
+# that isn't the case:
+#     TEMPO_WORKSPACE=/path/to/parent bench/setup_workspace.sh
 set -euo pipefail
 
 if [ -z "${CONDA_PREFIX:-}" ]; then
@@ -23,7 +24,7 @@ if [ -z "${CONDA_PREFIX:-}" ]; then
     exit 1
 fi
 
-WORKSPACE="${TEMPO_WORKSPACE:-$HOME/Code/git}"
+WORKSPACE="${TEMPO_WORKSPACE:-$(cd "$(dirname "$0")/../.." && pwd)}"
 for repo in conda-package-handling conda-package-streaming; do
     src="${WORKSPACE}/${repo}"
     if [ ! -d "${src}" ]; then

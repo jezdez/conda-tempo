@@ -5,7 +5,7 @@
 # devenv and writes to data/phase1/ and data/phase2/. Intended to be
 # invoked after sourcing dev/start:
 #
-#     source ~/Code/git/conda/dev/start -p 3.13 -i miniforge
+#     source <path-to>/conda/dev/start -p 3.13 -i miniforge
 #     bench/run_all.sh all
 #
 # Modes:

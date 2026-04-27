@@ -1,5 +1,5 @@
 {
-  "command_line": "/Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/bin/memray run --aggregate --follow-fork --native -o /Users/jezdez/Code/git/conda-tempo/data/phase1/w2/memray.bin -m conda create -n bench_w2 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter",
+  "command_line": "<workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/bin/memray run --aggregate --follow-fork --native -o <workspace>/conda-tempo/data/phase1/w2/memray.bin -m conda create -n bench_w2 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter",
   "has_native_traces": true,
   "peak_memory_bytes": 97277358,
   "peak_memory_human": "92.77 MiB",

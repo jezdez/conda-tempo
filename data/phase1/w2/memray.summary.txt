@@ -12,32 +12,41 @@ information regarding how memray resolves symbols.
 ┃                                     ┃ <Total ┃ Memo… ┃   Own ┃ Memo… ┃ Allo… ┃
 ┃ Location                            ┃ Memor… ┃     % ┃ Memo… ┃     % ┃ Count ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
-│ PyObject_Vectorcall at <unknown>    │ 94.30… │ 96.9… │ 0.00… │ 0.00% │ 17252 │
-│ <unknown> at <unknown>              │ 72.50… │ 74.5… │ 954.… │ 0.98% │ 11690 │
-│ cfunction_vectorcall_FASTCALL_KEYW… │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
-│ at <unknown>                        │        │       │       │       │       │
 │ run_module at <frozen runpy>        │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
 │ _run_tracker at                     │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
-│ /Users/jezdez/Code/git/conda/deven… │        │       │       │       │       │
-│ PyEval_EvalCode at <unknown>        │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17221 │
-│ builtin_exec at <unknown>           │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17221 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
+│ _run_with_file_output at            │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
+│ run at                              │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
+│ main at                             │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
+│ <module> at                         │ 61.09… │ 62.8… │ 0.00… │ 0.00% │ 17222 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
 │ <module> at                         │ 61.08… │ 62.8… │ 0.00… │ 0.00% │ 17215 │
-│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ <workspace>/conda/conda… │        │       │       │       │       │
 │ _run_code at <frozen runpy>         │ 61.08… │ 62.8… │ 0.00… │ 0.00% │ 17215 │
 │ _run_module_code at <frozen runpy>  │ 61.08… │ 62.8… │ 0.00… │ 0.00% │ 17215 │
 │ main at                             │ 61.08… │ 62.7… │ 0.00… │ 0.00% │ 17210 │
-│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
-│ _PyObject_VectorcallDictTstate at   │ 61.05… │ 62.7… │ 0.00… │ 0.00% │ 17180 │
-│ <unknown>                           │        │       │       │       │       │
-│ slot_tp_call at <unknown>           │ 61.03… │ 62.7… │ 0.00… │ 0.00% │ 17159 │
-│ _PyObject_Call at <unknown>         │ 61.03… │ 62.7… │ 0.00… │ 0.00% │ 17158 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
 │ main_subshell at                    │ 61.03… │ 62.7… │ 0.00… │ 0.00% │ 17156 │
-│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ <workspace>/conda/conda… │        │       │       │       │       │
 │ __call__ at                         │ 61.03… │ 62.7… │ 0.00… │ 0.00% │ 17156 │
-│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
+│ <workspace>/conda/conda… │        │       │       │       │       │
 │ conda_exception_handler at          │ 61.03… │ 62.7… │ 0.00… │ 0.00% │ 17156 │
-│ /Users/jezdez/Code/git/conda/conda… │        │       │       │       │       │
-│ _PyObject_Malloc at <unknown>       │ 55.08… │ 56.6… │ 9.99… │ 10.2… │  5732 │
-│ _PyObject_MakeTpCall at <unknown>   │ 49.06… │ 50.4… │ 0.00… │ 0.00% │ 14888 │
-│ _PyMem_ArenaAlloc at <unknown>      │ 45.10… │ 46.3… │ 45.1… │ 46.3… │    44 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ wrapper at                          │ 41.90… │ 43.0… │ 0.00… │ 0.00% │  2176 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ do_call at                          │ 41.90… │ 43.0… │ 0.00… │ 0.00% │  2176 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ install at                          │ 41.89… │ 43.0… │ 0.00… │ 0.00% │  2167 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ execute at                          │ 41.89… │ 43.0… │ 0.00… │ 0.00% │  2167 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ solve_final_state at                │ 40.76… │ 41.9… │ 0.00… │ 0.00% │  1494 │
+│ <workspace>/conda/deven… │        │       │       │       │       │
+│ solve_for_diff at                   │ 40.76… │ 41.9… │ 0.00… │ 0.00% │  1494 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
+│ solve_for_transaction at            │ 40.76… │ 41.9… │ 0.00… │ 0.00% │  1494 │
+│ <workspace>/conda/conda… │        │       │       │       │       │
 └─────────────────────────────────────┴────────┴───────┴───────┴───────┴───────┘

@@ -7,5 +7,5 @@
   "python_version": "3.13.13",
   "hyperfine_version": "1.20.0",
   "date": "2026-04-25",
-  "notes": "Track B Phase 1+2 baseline (2026-04-25 rerun). Run against a clean-rebuilt devenv (dev/start -p 3.13 -i miniforge -u) so conda is imported from ~/Code/git/conda/conda/. Plugged in, idle desktop, no thermal throttle. Package cache warmed by hyperfine's own --warmup 1 run for W1/W2; W3 is dry-run and exercises cached repodata only. Linux counterpart runs inside docker/ (OrbStack, arm64 Ubuntu 24.04, ext4). Full reproducibility verified: 2026-04-25 numbers are within ±5% of 2026-04-24 initial run at every workload and suspect."
+  "notes": "Track B Phase 1+2 baseline (2026-04-25 rerun). Run against a clean-rebuilt devenv (dev/start -p 3.13 -i miniforge -u) so conda is imported from <workspace>/conda/conda/. Plugged in, idle desktop, no thermal throttle. Package cache warmed by hyperfine's own --warmup 1 run for W1/W2; W3 is dry-run and exercises cached repodata only. Linux counterpart runs inside docker/ (OrbStack, arm64 Ubuntu 24.04, ext4). Full reproducibility verified: 2026-04-25 numbers are within ±5% of 2026-04-24 initial run at every workload and suspect."
 }

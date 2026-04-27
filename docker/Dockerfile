@@ -2,7 +2,9 @@
 #
 # Lays out the workspace under /opt/workspace/ so pixi's path
 # deps (``path = "../conda"`` etc.) resolve as siblings, matching
-# the macOS layout under ``~/Code/git/``:
+# the host sibling layout (any parent directory containing
+# ``conda-tempo``, ``conda``, ``conda-package-handling``,
+# ``conda-package-streaming`` as direct subdirs):
 #
 #     /opt/workspace/
 #         conda/                        pinned at CONDA_SHA

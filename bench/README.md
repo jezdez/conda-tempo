@@ -51,12 +51,16 @@ Cross-platform list of every task: `pixi task list`.
   `curl -fsSL https://pixi.sh/install.sh | sh`).
 - Sibling workspace checkouts under the parent of this repo:
   ```
-  ~/Code/git/
+  <workspace>/
       conda-tempo/              ← this repo
       conda/                    ← https://github.com/conda/conda
       conda-package-handling/   ← https://github.com/conda/conda-package-handling
       conda-package-streaming/  ← https://github.com/conda/conda-package-streaming
   ```
+  Any parent directory works; the key requirement is that `conda`,
+  `conda-package-handling`, and `conda-package-streaming` live as
+  direct siblings of `conda-tempo` so pixi's relative
+  `path = "../conda"` deps resolve.
 - hyperfine on PATH (`brew install hyperfine`). Everything else
   (conda, memray, pyperf, scalene) comes from conda-forge via pixi.
 

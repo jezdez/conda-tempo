@@ -4,25 +4,25 @@
    List reduced from 5344 to 20 due to restriction <20>
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        5    0.000    0.000   28.167    5.633 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
-        1    0.000    0.000   27.320   27.320 /Users/jezdez/Code/git/conda/conda/notices/core.py:112(wrapper)
-        1    0.012    0.012   27.316   27.316 /Users/jezdez/Code/git/conda/conda/cli/main_create.py:87(execute)
-        1    0.000    0.000   27.304   27.304 /Users/jezdez/Code/git/conda/conda/cli/install.py:271(install)
-        5    0.000    0.000   27.037    5.407 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:133(stop)
-        9    0.000    0.000   26.864    2.985 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1059(join)
+        5    0.000    0.000   28.167    5.633 <workspace>/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.000    0.000   27.320   27.320 <workspace>/conda/conda/notices/core.py:112(wrapper)
+        1    0.012    0.012   27.316   27.316 <workspace>/conda/conda/cli/main_create.py:87(execute)
+        1    0.000    0.000   27.304   27.304 <workspace>/conda/conda/cli/install.py:271(install)
+        5    0.000    0.000   27.037    5.407 <workspace>/conda/conda/plugins/reporter_backends/console.py:133(stop)
+        9    0.000    0.000   26.864    2.985 <workspace>/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1059(join)
         9    0.000    0.000   26.864    2.985 {method 'join' of '_thread._ThreadHandle' objects}
-      9/5    0.001    0.000   26.676    5.335 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1001(_bootstrap)
-        1    0.000    0.000   25.749   25.749 /Users/jezdez/Code/git/conda/conda/cli/install.py:518(handle_txn)
-        1    0.000    0.000   25.639   25.639 /Users/jezdez/Code/git/conda/conda/core/link.py:365(execute)
-      205    0.003    0.000   23.616    0.115 /Users/jezdez/Code/git/conda/conda/common/io.py:500(map)
-        1    0.004    0.004   19.406   19.406 /Users/jezdez/Code/git/conda/conda/core/link.py:909(_execute)
-      578    0.014    0.000   19.239    0.033 /Users/jezdez/Code/git/conda/conda/core/link.py:1088(_execute_actions)
-    29190    0.051    0.000   10.455    0.000 /Users/jezdez/Code/git/conda/conda/gateways/disk/create.py:343(create_link)
-    28371    0.059    0.000   10.366    0.000 /Users/jezdez/Code/git/conda/conda/core/path_actions.py:511(execute)
+      9/5    0.001    0.000   26.676    5.335 <workspace>/conda-tempo/.pixi/envs/default/lib/python3.13/threading.py:1001(_bootstrap)
+        1    0.000    0.000   25.749   25.749 <workspace>/conda/conda/cli/install.py:518(handle_txn)
+        1    0.000    0.000   25.639   25.639 <workspace>/conda/conda/core/link.py:365(execute)
+      205    0.003    0.000   23.616    0.115 <workspace>/conda/conda/common/io.py:500(map)
+        1    0.004    0.004   19.406   19.406 <workspace>/conda/conda/core/link.py:909(_execute)
+      578    0.014    0.000   19.239    0.033 <workspace>/conda/conda/core/link.py:1088(_execute_actions)
+    29190    0.051    0.000   10.455    0.000 <workspace>/conda/conda/gateways/disk/create.py:343(create_link)
+    28371    0.059    0.000   10.366    0.000 <workspace>/conda/conda/core/path_actions.py:511(execute)
     25984    9.334    0.000    9.334    0.000 {built-in method posix.link}
       250    7.428    0.030    7.433    0.030 {built-in method time.sleep}
-    50/13    0.002    0.000    7.306    0.562 /Users/jezdez/Code/git/conda/conda/common/io.py:106(decorated)
-       38    0.002    0.000    7.294    0.192 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/selectors.py:385(select)
-        6    0.000    0.000    7.130    1.188 /Users/jezdez/Code/git/conda-tempo/.pixi/envs/default/lib/python3.13/subprocess.py:1178(communicate)
+    50/13    0.002    0.000    7.306    0.562 <workspace>/conda/conda/common/io.py:106(decorated)
+       38    0.002    0.000    7.294    0.192 <workspace>/conda-tempo/.pixi/envs/default/lib/python3.13/selectors.py:385(select)
+        6    0.000    0.000    7.130    1.188 <workspace>/conda-tempo/.pixi/envs/default/lib/python3.13/subprocess.py:1178(communicate)
 
 

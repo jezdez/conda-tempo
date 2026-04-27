@@ -4,25 +4,25 @@
    List reduced from 4960 to 20 due to restriction <20>
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.000    0.000   68.400   68.400 /Users/jezdez/Code/git/conda/conda/cli/main_install.py:122(execute)
-        1    0.000    0.000   68.396   68.396 /Users/jezdez/Code/git/conda/conda/cli/install.py:271(install)
-        1    0.000    0.000   68.283   68.283 /Users/jezdez/Code/git/conda/conda/core/solve.py:116(solve_for_transaction)
-        1    0.000    0.000   68.283   68.283 /Users/jezdez/Code/git/conda/conda/core/solve.py:195(solve_for_diff)
-        2    0.000    0.000   58.914   29.457 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
-        1    0.000    0.000   57.122   57.122 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:134(solve_final_state)
-        2    0.000    0.000   57.121   28.561 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:1000(_notify_conda_outdated)
-        2    0.000    0.000   57.052   28.526 /Users/jezdez/Code/git/conda/conda/plugins/reporter_backends/console.py:133(stop)
-        6    0.000    0.000   56.709    9.451 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
+        1    0.000    0.000   68.400   68.400 <workspace>/conda/conda/cli/main_install.py:122(execute)
+        1    0.000    0.000   68.396   68.396 <workspace>/conda/conda/cli/install.py:271(install)
+        1    0.000    0.000   68.283   68.283 <workspace>/conda/conda/core/solve.py:116(solve_for_transaction)
+        1    0.000    0.000   68.283   68.283 <workspace>/conda/conda/core/solve.py:195(solve_for_diff)
+        2    0.000    0.000   58.914   29.457 <workspace>/conda/conda/plugins/reporter_backends/console.py:157(__exit__)
+        1    0.000    0.000   57.122   57.122 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:134(solve_final_state)
+        2    0.000    0.000   57.121   28.561 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:1000(_notify_conda_outdated)
+        2    0.000    0.000   57.052   28.526 <workspace>/conda/conda/plugins/reporter_backends/console.py:133(stop)
+        6    0.000    0.000   56.709    9.451 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1059(join)
         6    0.000    0.000   56.709    9.451 {method 'join' of '_thread._ThreadHandle' objects}
-      6/2    0.000    0.000   56.686   28.343 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
-      8/7    0.000    0.000   45.772    6.539 /Users/jezdez/Code/git/conda/conda/common/io.py:106(decorated)
-        1    0.003    0.003   43.855   43.855 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:298(_solving_loop)
-        1   43.829   43.829   43.835   43.835 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:346(_solve_attempt)
-        1    0.009    0.009   43.797   43.797 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:395(_specs_to_request_jobs)
-    10032    3.519    0.000   42.182    0.004 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:220(installed)
+      6/2    0.000    0.000   56.686   28.343 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/threading.py:1001(_bootstrap)
+      8/7    0.000    0.000   45.772    6.539 <workspace>/conda/conda/common/io.py:106(decorated)
+        1    0.003    0.003   43.855   43.855 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:298(_solving_loop)
+        1   43.829   43.829   43.835   43.835 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:346(_solve_attempt)
+        1    0.009    0.009   43.797   43.797 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/solver.py:395(_specs_to_request_jobs)
+    10032    3.519    0.000   42.182    0.004 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:220(installed)
     11019   20.359    0.002   39.209    0.004 {built-in method builtins.sorted}
       492    5.974    0.012   37.929    0.077 {built-in method time.sleep}
-     5007    0.036    0.000   21.494    0.004 /Users/jezdez/Code/git/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:267(always_update)
+     5007    0.036    0.000   21.494    0.004 <workspace>/conda/devenv/Darwin/arm64/envs/devenv-3.13-miniforge/lib/python3.13/site-packages/conda_libmamba_solver/state.py:267(always_update)
  50170781    8.132    0.000   18.915    0.000 <frozen _collections_abc>:897(__iter__)
 
 
