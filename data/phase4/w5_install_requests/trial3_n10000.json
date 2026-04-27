@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "command": "pixi run conda install -n bench_big -c conda-forge -y --dry-run requests",
+      "mean": 4.1100935511733345,
+      "stddev": 0.07686341965380067,
+      "median": 4.10424021784,
+      "user": 2.9059062,
+      "system": 0.8488845066666667,
+      "min": 4.03632413484,
+      "max": 4.189716300840001,
+      "times": [
+        4.189716300840001,
+        4.10424021784,
+        4.03632413484
+      ],
+      "memory_usage_byte": [
+        190726144,
+        190726144,
+        190726144
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

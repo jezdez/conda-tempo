@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (S19 direct diff_for_unlink_link_precs bench on realistic fixture)._
+> 2026-04-24 (W5 end-to-end confirms PrefixGraph-rattler seam, 29.5× at N=50 000)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -151,6 +151,18 @@ bottleneck directly observable rather than speculative:
   `conda-meta/*.json` files.** Track A A21 (PrefixData I/O)
   already tackled this direction; a prefix-level mtime-cache or
   batched JSON reads would be the next incremental step.
+- **PrefixGraph on realistic large-prefix installs is the next big
+  opportunity.** The shipping stack (B2 name-indexed PrefixGraph)
+  fixes the worst quadratic, but on realistic deps + large N it's
+  still the bottleneck for `conda install <anything>` on a
+  long-lived research env. W5 shows `conda install requests`
+  against a 50 000-record bench_big takes 10.5 minutes on the
+  shipping stack and 21 seconds with an experimental rattler-backed
+  `PrefixGraph.__init__` (see S18c/S19/W5). The speedup is
+  ecosystem-gated on adding py-rattler as a conda dep; the
+  technical path is clear. See the
+  [#15971 review thread](https://github.com/conda/conda/pull/15971)
+  for the discussion.
 - **Windows is completely unmeasured.** `menuinst`'s per-shortcut
   NTFS/AV cost was flagged in the original S9 write-up but never
   benchmarked. Tracked as a known gap.
@@ -897,6 +909,45 @@ Companion end-to-end workload `conda update --all` against a
 realistic bench_big is the natural next step but not yet built: the
 solver cost would dominate unless B11 is stacked and a few other
 pieces are in place.
+
+#### W5: `conda install <real-pkg>` against realistic bench_big (end-to-end)
+
+S19 gave the isolated numbers for the PrefixGraph hot path but didn't
+prove the speedup translates through the full CLI. W5 is the
+end-to-end bench: run `conda install -n bench_big -c conda-forge -y
+--dry-run requests` against the realistic bench_big fixture (same
+fixture S19 uses). `requests` has ~15 transitive deps on conda-forge
+that aren't in bench_big, so the solver plans a real install and
+`diff_for_unlink_link_precs` gets called with the full bench_big
+prefix plus 15 new records. That's exactly the operation S19
+isolates, embedded in the full install pipeline.
+
+| N (prefix size) | Pure Python (B2) | Trial 3 (rattler in PrefixGraph) | Δ | speedup |
+|---:|---:|---:|---:|---:|
+| 1 000 | 1.75 s ± 0.03 | 1.90 s ± 0.01 | +0.15 s | 0.92× |
+| 5 000 | 4.71 s ± 0.01 | 2.95 s ± 0.01 | **−1.76 s** | **1.6×** |
+| 10 000 | 12.60 s ± 0.07 | 4.11 s ± 0.08 | **−8.49 s** | **3.1×** |
+| 50 000 | **628.8 s (10.5 min)** | **21.3 s** | **−607.5 s** | **29.5×** |
+
+**At N=50 000, installing anything into a 50k-record prefix takes
+10.5 minutes on the pure-Python stack and 21 seconds with Trial 3.**
+This is the user-facing pain point that motivates the whole
+Track B effort: "conda is slow on research envs."
+
+The crossover is between N=1 000 and N=5 000. Below it, Trial 3's
+per-call rattler conversion overhead marginally exceeds what it
+saves on PrefixGraph. Above it, the PrefixGraph cost grows faster
+than the conversion tax, and the speedup opens up.
+
+**This answers the B2b/B2c question definitively:** the
+PrefixGraph-rattler seam delivers real, user-visible wall-time wins
+on realistic large-prefix workloads, not just microbenchmarks. The
+remaining question is ecosystem-level (py-rattler as an optional
+dep, mandatory dep, or bootstrapped into conda itself), not
+technical.
+
+Raw hyperfine JSON in
+[`data/phase4/w5_install_requests/`](data/phase4/w5_install_requests/).
 
 #### W4 fetch-phase: not bottlenecked on requests/urllib3
 
@@ -1721,6 +1772,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **W5: end-to-end confirmation of the PrefixGraph-rattler seam.** `conda install -n bench_big -c conda-forge -y --dry-run requests` against the realistic bench_big fixture (exponential fan-out, version-constrained deps). A/B: **N=5 000: 4.71 s to 2.95 s (1.6×); N=10 000: 12.60 s to 4.11 s (3.1×); N=50 000: 628.8 s to 21.3 s (29.5×, saves 10 minutes).** Below N=1 000 Trial 3 has slight overhead (0.92×); crossover is between 1 000 and 5 000. **This is the user-facing workload pain point: installing anything into a 50k-record prefix goes from 10.5 minutes to 21 seconds.** Raw data in [`data/phase4/w5_install_requests/`](data/phase4/w5_install_requests/). W5 answers the B2b/B2c rattler-integration question end-to-end: the seam works, the remaining question is ecosystem-level (py-rattler as optional / mandatory / bootstrapped dep), not technical. |
 | 2026-04-24 | **S19 + realistic fixture: the PrefixGraph-rattler seam works on realistic data.** S18b and S18c both failed to show an end-to-end win on W3 because W3 isn't a PrefixGraph-bound workload (`install --dry-run --no-deps tzdata` only triggers one trivial diff call). Two new pieces of infrastructure: (a) `synthetic_realistic_prefix_records(n)` and the matching `bench/seed_big_prefix.py --simple-deps` toggle, producing records with exponential dep fan-out (mean 2.5, tail to 20), 40 % version-constrained dep lines, varied version/build/subdir, matching conda-forge's observed distribution; (b) `bench/phase2/bench_s19_diff_for_unlink_link.py`, a direct microbench of the `diff_for_unlink_link_precs` hot path with `PrefixData.iter_records` in-memory-cached so we measure graph work not disk I/O. A/B post-B2 pure Python vs Trial 3 (rattler in PrefixGraph) on realistic deps: **2.8× at N=1 000, 4.2× at N=5 000, 6.4× at N=50 000**. Absolute saving at N=50 000 is 5 minutes per call (357 s to 56 s). This is the signal W3 couldn't see. Companion end-to-end `conda update --all` workload is the natural next step for validating in-situ. Raw data in [`data/phase2/s19_diff_for_unlink_link/`](data/phase2/s19_diff_for_unlink_link/). |
 | 2026-04-24 | **S18c: PrefixGraph-only rattler fast path microbench wins, W3 end-to-end doesn't.** Prototype at [`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler), stacked on B2: new `conda/models/_prefix_graph_rattler.py` delegates adjacency build + toposort to rattler when available, caches record conversions on conda records, dedupes MatchSpec parse by dep-string within the call. Microbench on the S18 PrefixGraph fixture: **13× at N=5 000** (1.28 s to 98.6 ms). Correctness verified against 5 scenarios, adjacency byte-identical to pure Python. End-to-end W3 (3 alternating A/B iterations): regresses wall time by 0.2 s at N=5 000, 0.6 to 1.9 s at N=50 000. cProfile explains it: W3 only spends ~1 s in PrefixGraph-related code, so any PrefixGraph fix has ~1 s upper bound on this workload, and Trial 3 pays ~260 ms of per-record conversion plus rattler overhead the microbench fixture hid. The seam works, the W3 bench can't validate it. Prototype kept as a reference branch. Raw data in [`data/phase4/w3_trial3_prefix_graph/`](data/phase4/w3_trial3_prefix_graph/). |
 | 2026-04-24 | **S18b: MatchSpec facade prototype regresses end-to-end.** Followed S18's microbenchmark win with a concrete prototype at [`conda/conda:jezdez/experiment-matchspec-rattler-facade`](https://github.com/jezdez/conda/tree/jezdez/experiment-matchspec-rattler-facade): optional `_match_spec_rattler` helper, `MatchSpec.__init__` / `.match()` lazy-delegate to rattler when installed, record-side conversion cache. 15/15 spot-check cases match conda's reference behaviour. End-to-end W3 @ 50 000 (mac, 5 hyperfine runs same session): **stack baseline 15.05 ± 1.65 s, stack + facade 17.35 ± 0.13 s.** The facade regresses by ~2.3 s because most MatchSpec instances in the solver hot path are one-shot (built, matched once or twice, discarded), so the per-spec rattler-parse cost dominates the per-match speedup. Conclusion in the report: the facade pattern in `MatchSpec` globally is too coarse; to capture the S18 numbers we'd need to narrow to `PrefixGraph.__init__` specifically or go wider and hold rattler records in `SolverInputState`. Prototype kept as a reference branch, not merged. Raw data in [`data/phase4/w3_50k_facade_experiment/`](data/phase4/w3_50k_facade_experiment/). |
