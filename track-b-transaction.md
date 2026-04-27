@@ -274,6 +274,12 @@ Other cph code (``create``, ``transmute``, ``validate_converted_files_match_stre
 only during package building / conversion / introspection, not
 during installs.
 
+#### @dholth subinterpreter note
+
+[test_extract_subinterp.py](https://github.com/dholth/conda/blob/857a0447baf6f1f8709d5ccf7dec159e391b9cf3/tests/test_extract_subinterp.py) shows that we do run into Python GIL limits when extracting `.conda`. It requires the [compression.zstd branch of conda-package-streaming](https://github.com/conda/conda-package-streaming/tree/pyzstd-compression) because the zstandard extension doesn't run in subinterpreters. On OSX we can get value from 3-6 interpreters which each have their own GIL.
+
+When extracting `.tar.bz2` we are able to get benefit from threads because more work happens in the bzip2 module which drops GIL, but a typical conda user probably only uses `.conda` packages now.
+
 #### Unpacking speedups: the full picture
 
 Single-package extract cProfile (3 real scientific-Python .conda
@@ -370,8 +376,7 @@ This reframes the "rewrite in Rust" case for cps. Adopting py-rattler:
 - **Alignment with the conda ecosystem direction** — py-rattler is
   already part of the ``conda/`` org (prefix.dev's contribution),
   not a community-maintained side project. The consolidation story
-  is consistent with the cps author's stated interest in folding
-  cph into cps: a single Rust-backed extract path across the
+  is a single Rust-backed extract path across the
   ecosystem.
 - **Drops ~500 lines of hand-written cps Python** (``extract_stream``
   + ``TarfileNoSameOwner`` + ``tar_generator``) for a thinner wrapper
@@ -401,6 +406,8 @@ This reframes the "rewrite in Rust" case for cps. Adopting py-rattler:
 | A. Optional fast path in cps | ``cps.extract.extract(path, dest)`` tries ``import rattler`` first; falls back to stdlib tarfile if not installed | small (~30 LOC) | low |
 | B. Hard dep swap | cps requires py-rattler; all ``extract_stream`` call sites rewritten | medium-large | medium — breaks streaming API users |
 | C. cps absorbs cph + gains rattler fast path | Consolidates cph into cps AND adds rattler as fast backend; cph deprecated | large | medium — ecosystem coordination |
+
+> conda-index is a streaming API user, closing packages as soon as desired metadata was found.
 
 Option A is the cleanest incremental step. It delivers the Linux
 speedup for users who install py-rattler without forcing it on
