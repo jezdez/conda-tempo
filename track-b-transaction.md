@@ -8,7 +8,7 @@
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
 | **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; B9b confirmed non-fix; cps-stack beats py-rattler on both platforms |
-| **Tracking** | TBD (Track B ticket created at Phase 1 kickoff) |
+| **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
 ## Contents
@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (dependency audit: S17 libmamba setup + W4 fetch profile)._
+> 2026-04-24 (dependency audit + draft PRs filed across four repos)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -97,22 +97,23 @@ Five fixes in `conda`, one in `conda-libmamba-solver`, three in
 `conda-package-streaming`, one in `conda-package-handling`, plus
 three dropped or rescoped after measurement:
 
-| ID | Repo | Fixes | Phase 2 signal | Shipping status |
+| ID | Repo | Fixes | Phase 2 signal | PR |
 |---|---|---|---|---|
-| B1 | conda | Quadratic diff sort | 782× at N=50 000 | on stack |
-| B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | on stack |
-| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB | on stack |
-| B6 | conda | Opt-in parallel `_verify_individual_level` | 1.26× at K=2 | on stack (opt-in only) |
+| B1 | conda | Quadratic diff sort | 782× at N=50 000 | [conda/conda#15970](https://github.com/conda/conda/pull/15970) draft |
+| B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | [conda/conda#15971](https://github.com/conda/conda/pull/15971) draft |
+| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB | [conda/conda#15972](https://github.com/conda/conda/pull/15972) draft |
+| B6 | conda | Opt-in parallel `_verify_individual_level` | 1.26× at K=2 | [conda/conda#15973](https://github.com/conda/conda/pull/15973) draft (opt-in) |
 | B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
-| B8 | conda | `EXTRACT_THREADS = 2` (was `min(cpu, 3)`) | Linux regresses at K ≥ 3 by 28–40 % | on stack |
+| B8 | conda | `EXTRACT_THREADS = 2` (was `min(cpu, 3)`) | Linux regresses at K ≥ 3 by 28–40 % | [conda/conda#15974](https://github.com/conda/conda/pull/15974) draft |
 | B9a | conda | pyc batching across packages | misidentified — already batched | dropped |
 | B9b | conda | end-of-transaction pyc batch | confirmed already-batched via stacked profile | dropped |
-| B9c | conda | Codesign batching for osx-arm64 rewrites | W1 mac −33 %, W2 mac −15 % | on stack |
-| B11 | conda-libmamba-solver | Cache `SolverInputState.installed` | 6500× per-access | on stack |
+| B9c | conda | Codesign batching for osx-arm64 rewrites | W1 mac −33 %, W2 mac −15 % | [conda/conda#15975](https://github.com/conda/conda/pull/15975) draft |
+| B11 | conda-libmamba-solver | Cache `SolverInputState.installed` | 6500× per-access | [conda/conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921) draft |
 | B12 | cps | Per-member path-safety (dest-dir memo) | 20 % per-member | superseded by B20 |
-| B13 | cps + cph | Parse `.conda` ZipFile once per package | 2× per archive | on stack |
-| B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract | on stack |
-| B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | on stack |
+| B13 (cps) | cps | Accept pre-opened `ZipFile` via `zf=` kwarg | 2× per archive | [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) draft |
+| B13 (cph) | cph | Thread one `ZipFile` through both components (depends on cps#173) | 2× per archive | [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) draft |
+| B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract | [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174) draft |
+| B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) draft |
 
 Total: ~250 LOC across all four repositories, no new dependencies,
 no architectural changes, Python 3.10+.
@@ -156,14 +157,14 @@ bottleneck directly observable rather than speculative:
 
 ### Next steps
 
-None of the eleven branches have been submitted as PRs yet. The
-nearest-term work is:
+All eleven branches are filed as draft PRs across the four repositories
+(tracking issue [conda/conda#15969](https://github.com/conda/conda/issues/15969)).
+The nearest-term work is:
 
-1. Push the eleven branches as stacked PRs across the four
-   repositories and draft a `news/` entry per PR per the Track A
-   convention.
+1. Move PRs from draft to ready-for-review, one at a time in dependency
+   order (cps#173 before cph#318, then everything else independently).
 2. Get Windows CI on the branches that touch `gateways/disk/*`
-   (B6, B8) and verify menuinst-adjacent paths; Track B currently
+   (B6, B8, B9c) and verify menuinst-adjacent paths; Track B currently
    has zero Windows measurements.
 3. Add Linux x86_64 numbers to complement the arm64 ones; all
    CI and most prod installs are x86_64 and syscall costs are
@@ -1439,6 +1440,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **Tracking epic filed + 11 draft PRs across four repositories.** New tracking issue [conda/conda#15969](https://github.com/conda/conda/issues/15969) (labels: `epic`, `tag::performance`), mirroring the Track A #15867 layout. All branches pushed to `jezdez` forks and filed as draft PRs using each repo's PR template, with news/ entries where the repo has one (conda, libmamba-solver, cph) and PR bodies linking back to the tracking issue + the conda-tempo research report: conda/conda#15970 (B1), #15971 (B2), #15972 (B4), #15973 (B6), #15974 (B8), #15975 (B9c); conda/conda-libmamba-solver#921 (B11); conda/conda-package-streaming#173 (B13 cps side), #174 (B14), #175 (B20); conda/conda-package-handling#318 (B13 cph consumer, depends on cps#173). Exec-summary "What shipped" and "Next steps" sections updated to show per-PR links instead of "on stack" / "no PRs yet" placeholders. |
 | 2026-04-24 | **Dependency bottleneck audit + S17 + W4 fetch profile.** Systematically audited conda's external dependencies (`zstandard`, `stdlib tarfile`, `requests`/`urllib3`/`cryptography`, `ruamel.yaml`, `pluggy`, `tqdm`, `menuinst`, `conda-content-trust`, libmambapy, etc.) for post-solver bottlenecks. New "Dependency bottlenecks" subsection under Background documents each one's status. Two new measurements: **S17 microbench** (`bench/phase2/bench_s17_libmamba_index.py`) isolates the steady-state per-call cost of `LibMambaIndexHelper._set_repo_priorities` and `_load_installed`, finding **2 µs and 16.7 µs/record** respectively — ~10⁶× below the 1.78 s cProfile showed for the same functions on a real install. Conclusion: the 3.6 s (mac) / 8 s (Linux) cost cProfile attributes to these functions is **libmambapy C++ one-shot setup cost** (first-time repodata→solv conversion, internal index construction), not Python-fixable. Out of Track B scope. **W4 fetch-phase cProfile** confirms `requests`/`urllib3`/`cryptography` are NOT a cold-cache bottleneck: `_SSLSocket.read` is 0.69 s of 47 s (~1.5 %), 191 downloads total 2.63 s at ~14 ms/pkg, CDN-throughput-bound. Deferred-import tricks would not help W4. Raw data in [`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/) and [`data/phase4/w4_profile/`](data/phase4/w4_profile/). Executive Summary's remaining-headroom list updated with these findings; `menuinst` on Windows explicitly flagged as the only profiled-but-unmeasured dependency gap. |
 | 2026-04-24 | **Executive Summary section added.** Placed between Contents and Scope, structured like Track A's (narrative → headline results → shipping table → remaining headroom → next steps). Kept in sync with the Changelog going forward; carries its own "Last refreshed" date. No new measurements; reflects the state after the 2026-04-24 W3@50k + stacked profile commit. |
 | 2026-04-24 | **W3 at 50k records on the stack + stacked-run profiles + B9b close-out.** Reseeded `bench_big` at 50k records (the original intractable case that got downgraded to 5k in Phase 0) and ran hyperfine against the full stack: **mac 12.44 s ± 1.37 s (>24× vs the >300 s stock-conda intractable baseline); Linux 8.03 s ± 0.05 s (>37×)**. With B1+B2+B11 stacked the solve is constant-ish and the 50k-record post-solve path scales sublinearly vs 5k (mac 1.87 → 12.44 s is 6.6× for 10× data, Linux 1.26 → 8.03 s is 6.4×). cProfile + `time_recorder` on the stacked W1 and W2 runs (both platforms) committed to [`data/phase4/<w>/`](data/phase4/) and [`data/phase4_linux/<w>/`](data/phase4_linux/), and the "remaining headroom" bullets in Phase 4 are now measured rather than inferred. Standout: macOS W2's remaining 24 s still has `posix.link` as its single biggest tottime sink at **9.33 s / 25 984 calls** — this is exactly the S7 parallel-link signal that regresses on Linux ext4 and was correctly dropped as a default. **B9b closed out as a non-fix**: the stacked W2 profile shows `compile_multiple_pyc` is called exactly once per transaction across all ~186 `noarch: python` packages, confirming `AggregateCompileMultiPycAction` is already the end-of-transaction batch that B9b was speculatively proposing. B9c analogously: 185 `_enqueue_codesign` calls flushed into 1 `flush_pending_codesign` subprocess (0.58 s). Harness: `run_cprofile.py` and `parse_time_recorder.py` gained a `--phase` arg so Phase-4 stacked profiles don't clobber the Phase-1 baselines. |
