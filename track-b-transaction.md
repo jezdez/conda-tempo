@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (dependency audit + draft PRs filed across four repos)._
+> 2026-04-24 (S18 py-rattler MatchSpec comparison + draft PRs filed)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -615,6 +615,81 @@ representation. Neither is in scope.
 
 Raw pyperf JSON + metadata in
 [`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/).
+
+#### S18: py-rattler `MatchSpec` vs conda's (B2 review follow-up)
+
+[@jaimergp](https://github.com/jaimergp) asked on the B2 PR review
+whether swapping conda's Python `MatchSpec` for py-rattler's
+Rust-backed `MatchSpec` would be faster, given that B2 restructures
+the `PrefixGraph.__init__` hot path that calls `MatchSpec.match()`.
+
+S18 (`bench/phase2/bench_s18_matchspec_rattler.py`) runs three
+paired microbenchmarks against the same synthetic DAG fixture:
+
+A. **Parse cost** (`MatchSpec(s)` for N dep strings):
+
+| N (total deps) | conda | rattler | speedup |
+|---:|---:|---:|---:|
+| 485 | 1.18 ms | 407 µs | **2.9×** |
+| 4 985 | 12.3 ms | 3.26 ms | **3.8×** |
+| 24 985 | 65.5 ms | 17.5 ms | **3.7×** |
+
+B. **Match cost** (100 pre-parsed specs × 100 records = 10 k matches):
+
+| | conda | rattler | speedup |
+|---|---:|---:|---:|
+| 10 000 matches | 7.4 ms | 1.4 ms | **5.3×** |
+
+C. **PrefixGraph-equivalent** (`PrefixGraph(records).graph` vs
+`rattler.PackageRecord.sort_topologically(records)`). `conda` column
+is the **post-B2** name-indexed path, not the pre-B2 quadratic:
+
+| N records | conda post-B2 | rattler pure | rattler + conversion | pure speedup | with-conversion speedup |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 2.71 ms | 184 µs | 712 µs | 15× | **3.8×** |
+| 1 000 | 68.5 ms | 1.94 ms | 7.15 ms | 35× | **9.6×** |
+| 5 000 | 1.28 s | 11.4 ms | 38.1 ms | 112× | **33×** |
+
+"rattler + conversion" includes building a fresh list of
+`rattler.PackageRecord` instances from conda `PrefixRecord` inputs
+per call (what any realistic drop-in swap inside `solve.py` would
+pay unless records are kept rattler-shaped throughout). Conversion
+alone is 488 µs / 5.26 ms / 26.2 ms at N = 100 / 1 000 / 5 000 —
+about 70 % of the hybrid-path cost at large N.
+
+**Takeaways:**
+
+- **Rattler's `MatchSpec` is ~4× faster to parse and ~5× faster
+  per-match** even on simple bare-name specs. The gap would widen
+  on realistic version/build-constrained specs because rattler's
+  parser is a proper combinator; conda's is regex-heavy.
+- **PrefixGraph-equivalent is the dramatic win**: 15–112× faster
+  when records are already rattler-shaped, 3.8–33× with per-call
+  conversion. Speedup scales with N because rattler does the whole
+  toposort in Rust; post-B2 conda still walks Python-level lookup
+  tables per candidate.
+- **The win stays meaningful with conversion cost paid per call.**
+  At N = 5 000 a full hybrid path (convert conda → rattler, sort,
+  use output) is 33× faster than B2 alone. At small N (< 200) the
+  conversion tax narrows the gap to ~3–4×.
+- **Open design question**: where to do the conversion. Options
+  range from (a) narrow — swap just inside `PrefixGraph.__init__`,
+  eat the conversion per call; (b) wide — store rattler records
+  throughout `SolverInputState` / `UnlinkLinkTransaction` so the
+  conversion happens once per solve, not per PrefixGraph call;
+  (c) deep — move all of conda's record-handling types to
+  rattler equivalents, which is a big architectural change.
+  Option (a) is measurable today and still wins at N ≥ 500.
+  Options (b) and (c) would be substantially bigger PRs but remove
+  the conversion overhead entirely.
+- **API-coverage caveat**: rattler's `MatchSpec` supports the core
+  spec grammar (name, version, build, channel, subdir). conda's
+  also supports a few edge-case syntaxes (e.g.
+  `matchspec[key=value]` extras, optional features) that would
+  need parity testing before any swap lands. Not tested here.
+
+Raw pyperf JSON in
+[`data/phase2/s18_matchspec_rattler/`](data/phase2/s18_matchspec_rattler/).
 
 #### W4 fetch-phase: not bottlenecked on requests/urllib3
 
@@ -1439,6 +1514,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **S18: py-rattler `MatchSpec` vs conda's, following [@jaimergp](https://github.com/jaimergp)'s review of #15971 (B2).** New `bench/phase2/bench_s18_matchspec_rattler.py` runs three paired microbenchmarks: parse cost, match cost, and PrefixGraph-equivalent construction. Against post-B2 conda on synthetic DAG fixtures: parsing is 3–4× faster in rattler, per-match cost is 5.3× faster, and `rattler.PackageRecord.sort_topologically()` is 15–112× faster than `PrefixGraph(records).graph` at N = 100–5 000. With per-call record conversion (conda `PrefixRecord` → rattler `PackageRecord`), the hybrid path is still 3.8–33× faster than B2 alone; conversion eats ~70 % of the hybrid-path time at N = 5 000. Takeaway: rattler's `MatchSpec` is meaningfully faster across every axis we can measure; the design question is whether to eat per-call conversion (narrow swap inside `PrefixGraph.__init__`), amortise across one solve (wider swap into `SolverInputState` / `UnlinkLinkTransaction`), or go all-in on a record-type migration. Raw data in [`data/phase2/s18_matchspec_rattler/`](data/phase2/s18_matchspec_rattler/). B2 (#15971) ships as-is; S18 is scoped as a follow-up investigation, not a blocker. |
 | 2026-04-24 | **Tracking epic filed + 11 draft PRs across four repositories.** New tracking issue [conda/conda#15969](https://github.com/conda/conda/issues/15969) (labels: `epic`, `tag::performance`), mirroring the Track A #15867 layout. All branches pushed to `jezdez` forks and filed as draft PRs using each repo's PR template, with news/ entries where the repo has one (conda, libmamba-solver, cph) and PR bodies linking back to the tracking issue + the conda-tempo research report: conda/conda#15970 (B1), #15971 (B2), #15972 (B4), #15973 (B6), #15974 (B8), #15975 (B9c); conda/conda-libmamba-solver#921 (B11); conda/conda-package-streaming#173 (B13 cps side), #174 (B14), #175 (B20); conda/conda-package-handling#318 (B13 cph consumer, depends on cps#173). Exec-summary "What shipped" and "Next steps" sections updated to show per-PR links instead of "on stack" / "no PRs yet" placeholders. |
 | 2026-04-24 | **Dependency bottleneck audit + S17 + W4 fetch profile.** Systematically audited conda's external dependencies (`zstandard`, `stdlib tarfile`, `requests`/`urllib3`/`cryptography`, `ruamel.yaml`, `pluggy`, `tqdm`, `menuinst`, `conda-content-trust`, libmambapy, etc.) for post-solver bottlenecks. New "Dependency bottlenecks" subsection under Background documents each one's status. Two new measurements: **S17 microbench** (`bench/phase2/bench_s17_libmamba_index.py`) isolates the steady-state per-call cost of `LibMambaIndexHelper._set_repo_priorities` and `_load_installed`, finding **2 µs and 16.7 µs/record** respectively — ~10⁶× below the 1.78 s cProfile showed for the same functions on a real install. Conclusion: the 3.6 s (mac) / 8 s (Linux) cost cProfile attributes to these functions is **libmambapy C++ one-shot setup cost** (first-time repodata→solv conversion, internal index construction), not Python-fixable. Out of Track B scope. **W4 fetch-phase cProfile** confirms `requests`/`urllib3`/`cryptography` are NOT a cold-cache bottleneck: `_SSLSocket.read` is 0.69 s of 47 s (~1.5 %), 191 downloads total 2.63 s at ~14 ms/pkg, CDN-throughput-bound. Deferred-import tricks would not help W4. Raw data in [`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/) and [`data/phase4/w4_profile/`](data/phase4/w4_profile/). Executive Summary's remaining-headroom list updated with these findings; `menuinst` on Windows explicitly flagged as the only profiled-but-unmeasured dependency gap. |
 | 2026-04-24 | **Executive Summary section added.** Placed between Contents and Scope, structured like Track A's (narrative → headline results → shipping table → remaining headroom → next steps). Kept in sync with the Changelog going forward; carries its own "Last refreshed" date. No new measurements; reflects the state after the 2026-04-24 W3@50k + stacked profile commit. |
