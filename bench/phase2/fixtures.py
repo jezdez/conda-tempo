@@ -266,7 +266,12 @@ def clear_pyc_cache(packages) -> None:
 
 
 def synthetic_prefix_records(n: int, *, deps_per_record: int = 5):
-    """Build ``n`` in-memory ``PrefixRecord`` instances with realistic deps.
+    """Build ``n`` in-memory ``PrefixRecord`` instances with simple
+    bare-name deps. Kept for backwards compatibility with existing
+    benches (S1/S2/S11) that were written against this shape. New
+    benches should prefer :func:`synthetic_realistic_prefix_records`
+    which produces version/build-constrained deps closer to real
+    conda-forge distributions.
 
     The dependency graph is guaranteed acyclic: record ``i`` depends
     only on records with index ``< i``. Real conda prefixes are DAGs
@@ -306,6 +311,159 @@ def synthetic_prefix_records(n: int, *, deps_per_record: int = 5):
             size=0,
             timestamp=0,
             fn=f"{name}-0.0.0-py313_0.conda",
+            url="",
+            files=[],
+        )
+        records.append(rec)
+    return records
+
+
+def synthetic_realistic_prefix_records(
+    n: int,
+    *,
+    mean_deps: float = 2.5,
+    max_deps: int = 30,
+    constrained_fraction: float = 0.4,
+    seed: int = 42,
+):
+    """Build ``n`` in-memory ``PrefixRecord`` instances with realistic
+    dep structure.
+
+    Matches conda-forge's observed distribution more closely than
+    :func:`synthetic_prefix_records`:
+
+    * **Fan-out**: power-law distributed (Zipf-ish). Mean ~2.5
+      deps/record, tail extends to ``max_deps``. Matches a
+      2024-era conda-forge environment's distribution.
+    * **Version constraints**: ``constrained_fraction`` of deps
+      (default 40 %) carry a ``>=X.Y`` version constraint that the
+      matcher has to parse and evaluate. Rest are bare names.
+    * **Build strings**: records have varied build strings
+      (``py313_0``, ``h0a0a0a0_0``, ``pyhd8ed1ab_0``, etc.), spread
+      across the fixture so build-string match paths get exercised.
+    * **Version strings**: records have non-trivial versions
+      (``1.2.3``, ``2.0.0rc1``, ``3.13``) so matchers that parse
+      version ranges do meaningful work.
+    * **Noarch/subdir mix**: 30 % ``noarch``, 70 % a host subdir.
+
+    The graph stays acyclic via the same index-ordering trick as
+    :func:`synthetic_prefix_records`. RNG is seeded for determinism.
+
+    This fixture is designed to exercise ``MatchSpec.match()`` and
+    ``PrefixGraph.__init__()`` with per-match work that looks like
+    what conda actually does in production, not the near-trivial
+    cost of matching bare names.
+    """
+    import random
+
+    from conda.models.records import PrefixRecord
+
+    rng = random.Random(seed)
+
+    # Real conda-forge has a long tail of package-name styles. Keep
+    # names synthetic but varied enough to exercise the by-name
+    # index non-trivially (conda-forge has 20k+ packages; we generate
+    # up to N unique names).
+    names = [f"pkg-{i:06d}" for i in range(n)]
+
+    # Version and build pools, picked lexically varied so matchers
+    # have to actually compare.
+    version_pool = [
+        "0.1.0",
+        "0.5.2",
+        "1.0.0",
+        "1.2.3",
+        "1.4.1",
+        "2.0.0",
+        "2.1.0rc1",
+        "3.0.0",
+        "3.13",
+        "4.5.6",
+    ]
+    build_pool = [
+        "py313_0",
+        "py313_1",
+        "py312_0",
+        "h0a0a0a0_0",
+        "h1b1b1b1_0",
+        "pyhd8ed1ab_0",
+        "hc9c84f9_0",
+        "0",
+    ]
+    subdir_pool = [
+        "noarch",
+        "noarch",
+        "noarch",  # bias towards noarch 30 %
+        "linux-64",
+        "linux-64",
+        "osx-arm64",
+        "win-64",
+        "linux-aarch64",
+    ]
+
+    def _pick_fanout() -> int:
+        """Power-law fan-out: many records with 0-3 deps, long tail
+        to ``max_deps``. Exponential distribution approximates the
+        observed conda-forge shape (many packages with few deps,
+        a small number with 20+)."""
+        val = int(rng.expovariate(1.0 / mean_deps))
+        return min(val, max_deps)
+
+    def _pick_version() -> str:
+        return rng.choice(version_pool)
+
+    def _pick_build() -> str:
+        return rng.choice(build_pool)
+
+    def _pick_subdir() -> str:
+        return rng.choice(subdir_pool)
+
+    def _pick_dep_string(target_name: str, target_version: str) -> str:
+        """Return a dep spec targeting ``target_name``. Varies:
+        bare name / name+version constraint / name+version+build."""
+        roll = rng.random()
+        if roll < (1.0 - constrained_fraction):
+            return target_name
+        # Constrained: name >= X
+        major = target_version.split(".", 1)[0]
+        if roll < (1.0 - constrained_fraction) + constrained_fraction * 0.75:
+            try:
+                m = int(major)
+                return f"{target_name} >={major}.0,<{m + 1}.0"
+            except ValueError:
+                return f"{target_name} >={target_version}"
+        # Name with pinned version string
+        return f"{target_name} {target_version}"
+
+    records = []
+    for i, name in enumerate(names):
+        version = _pick_version()
+        build = _pick_build()
+        subdir = _pick_subdir()
+        platform = None if subdir == "noarch" else subdir.split("-")[0]
+
+        # Pick deps from records with strictly smaller index (DAG).
+        candidate_pool = list(range(i))
+        k = min(_pick_fanout(), len(candidate_pool))
+        dep_indices = rng.sample(candidate_pool, k) if k else []
+        deps = tuple(
+            _pick_dep_string(names[j], records[j].version) for j in dep_indices
+        )
+
+        rec = PrefixRecord(
+            name=name,
+            version=version,
+            build=build,
+            build_number=0,
+            channel="synthetic",
+            subdir=subdir,
+            platform=platform,
+            depends=deps,
+            md5="0" * 32,
+            sha256="0" * 64,
+            size=0,
+            timestamp=0,
+            fn=f"{name}-{version}-{build}.conda",
             url="",
             files=[],
         )
