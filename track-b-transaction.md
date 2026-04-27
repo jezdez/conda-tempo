@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (S18 py-rattler MatchSpec comparison + draft PRs filed)._
+> 2026-04-24 (S18b MatchSpec facade prototype measurement)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -690,6 +690,68 @@ about 70 % of the hybrid-path cost at large N.
 
 Raw pyperf JSON in
 [`data/phase2/s18_matchspec_rattler/`](data/phase2/s18_matchspec_rattler/).
+
+#### S18b: MatchSpec facade prototype (the naive approach regresses)
+
+After S18's microbenchmark suggested rattler could give us large
+speedups, the obvious next step was a facade: have
+`conda.models.match_spec.MatchSpec` try to build a rattler spec
+behind the scenes, cache the `rattler.PackageRecord` view on each
+conda record, and delegate `.match()` to rattler whenever possible.
+Everything optional, everything falls back to pure conda when
+rattler is absent or can't parse the spec.
+
+Prototype branch:
+[`conda/conda:jezdez/experiment-matchspec-rattler-facade`](https://github.com/jezdez/conda/tree/jezdez/experiment-matchspec-rattler-facade).
+Two new files: `conda/models/_match_spec_rattler.py` (the facade
+helpers) plus ~25 LOC of hook-in at `MatchSpec.__init__` /
+`.match()`. Lazy init so specs that never get matched pay nothing.
+15 spot-checks on diverse spec grammars (bare name, version
+constraints, `[build=...]` extras, channel-qualified, noarch
+records) all match conda's reference behaviour.
+
+**End-to-end W3 @ 50 000 records, macOS, 5 hyperfine runs each,
+same session:**
+
+| Configuration | mean | stddev |
+|---|---:|---:|
+| Stack baseline (no facade) | 15.05 s | ±1.65 s |
+| Stack + MatchSpec facade | 17.35 s | ±0.13 s |
+
+The facade **regresses wall time by ~2.3 s** (with tighter variance
+because the overhead is deterministic). That's the opposite of what
+the microbench predicted.
+
+Why:
+
+- In real solver traffic most `MatchSpec` instances are one-shot:
+  built, matched once or twice against a small candidate set, then
+  discarded. The facade's per-spec rattler-parse cost (a few µs) is
+  paid on every one of them.
+- The synthetic S18 fixture exaggerates the win because it forces
+  the same 100 pre-parsed specs through the match loop many times,
+  amortising the parse cost perfectly.
+- Record conversion does cache on the conda record, so
+  second-and-later matches against the same record are fast. But
+  on W3 @ 50 000 there are ~50 000 distinct records each touched
+  a handful of times; conversion doesn't amortise enough.
+
+**Conclusion**: the facade pattern in `MatchSpec` globally is too
+coarse. To capture the S18 headline speedup we need one of:
+
+1. **Narrower**: hook the facade only inside `PrefixGraph.__init__`
+   by delegating the whole graph build to
+   `rattler.PackageRecord.sort_topologically` when rattler is
+   available. Skips the per-spec-object facade entirely; records
+   still convert once per PrefixGraph call. Measurable win at
+   N ≥ 1 000 per the S18 numbers, small impact at smaller N.
+2. **Wider**: keep `rattler.PackageRecord` in `SolverInputState` /
+   `UnlinkLinkTransaction` so conversion happens once per solve
+   instead of per match. Bigger refactor, cleaner per-call cost.
+
+Neither is committed today. The facade prototype stays as a branch
+for reference. Raw data in
+[`data/phase4/w3_50k_facade_experiment/`](data/phase4/w3_50k_facade_experiment/).
 
 #### W4 fetch-phase: not bottlenecked on requests/urllib3
 
@@ -1514,6 +1576,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **S18b: MatchSpec facade prototype regresses end-to-end.** Followed S18's microbenchmark win with a concrete prototype at [`conda/conda:jezdez/experiment-matchspec-rattler-facade`](https://github.com/jezdez/conda/tree/jezdez/experiment-matchspec-rattler-facade): optional `_match_spec_rattler` helper, `MatchSpec.__init__` / `.match()` lazy-delegate to rattler when installed, record-side conversion cache. 15/15 spot-check cases match conda's reference behaviour. End-to-end W3 @ 50 000 (mac, 5 hyperfine runs same session): **stack baseline 15.05 ± 1.65 s, stack + facade 17.35 ± 0.13 s.** The facade regresses by ~2.3 s because most MatchSpec instances in the solver hot path are one-shot (built, matched once or twice, discarded), so the per-spec rattler-parse cost dominates the per-match speedup. Conclusion in the report: the facade pattern in `MatchSpec` globally is too coarse; to capture the S18 numbers we'd need to narrow to `PrefixGraph.__init__` specifically or go wider and hold rattler records in `SolverInputState`. Prototype kept as a reference branch, not merged. Raw data in [`data/phase4/w3_50k_facade_experiment/`](data/phase4/w3_50k_facade_experiment/). |
 | 2026-04-24 | **S18: py-rattler `MatchSpec` vs conda's, following [@jaimergp](https://github.com/jaimergp)'s review of #15971 (B2).** New `bench/phase2/bench_s18_matchspec_rattler.py` runs three paired microbenchmarks: parse cost, match cost, and PrefixGraph-equivalent construction. Against post-B2 conda on synthetic DAG fixtures: parsing is 3 to 4× faster in rattler, per-match cost is 5.3× faster, and `rattler.PackageRecord.sort_topologically()` is 15 to 112× faster than `PrefixGraph(records).graph` at N = 100 to 5 000. With per-call record conversion (conda `PrefixRecord` to rattler `PackageRecord`), the hybrid path is still 3.8 to 33× faster than B2 alone; conversion eats ~70 % of the hybrid-path time at N = 5 000. Takeaway: rattler's `MatchSpec` is meaningfully faster across every axis we can measure; the design question is whether to eat per-call conversion (narrow swap inside `PrefixGraph.__init__`), amortise across one solve (wider swap into `SolverInputState` / `UnlinkLinkTransaction`), or go all-in on a record-type migration. Raw data in [`data/phase2/s18_matchspec_rattler/`](data/phase2/s18_matchspec_rattler/). B2 (#15971) ships as-is; S18 is scoped as a follow-up investigation, not a blocker. |
 | 2026-04-24 | **Tracking epic filed + 11 draft PRs across four repositories.** New tracking issue [conda/conda#15969](https://github.com/conda/conda/issues/15969) (labels: `epic`, `tag::performance`), mirroring the Track A #15867 layout. All branches pushed to `jezdez` forks and filed as draft PRs using each repo's PR template, with news/ entries where the repo has one (conda, libmamba-solver, cph) and PR bodies linking back to the tracking issue + the conda-tempo research report: conda/conda#15970 (B1), #15971 (B2), #15972 (B4), #15973 (B6), #15974 (B8), #15975 (B9c); conda/conda-libmamba-solver#921 (B11); conda/conda-package-streaming#173 (B13 cps side), #174 (B14), #175 (B20); conda/conda-package-handling#318 (B13 cph consumer, depends on cps#173). Exec-summary "What shipped" and "Next steps" sections updated to show per-PR links instead of "on stack" / "no PRs yet" placeholders. |
 | 2026-04-24 | **Dependency bottleneck audit + S17 + W4 fetch profile.** Systematically audited conda's external dependencies (`zstandard`, `stdlib tarfile`, `requests`/`urllib3`/`cryptography`, `ruamel.yaml`, `pluggy`, `tqdm`, `menuinst`, `conda-content-trust`, libmambapy, etc.) for post-solver bottlenecks. New "Dependency bottlenecks" subsection under Background documents each one's status. Two new measurements: **S17 microbench** (`bench/phase2/bench_s17_libmamba_index.py`) isolates the steady-state per-call cost of `LibMambaIndexHelper._set_repo_priorities` and `_load_installed`, finding **2 µs and 16.7 µs/record** respectively — ~10⁶× below the 1.78 s cProfile showed for the same functions on a real install. Conclusion: the 3.6 s (mac) / 8 s (Linux) cost cProfile attributes to these functions is **libmambapy C++ one-shot setup cost** (first-time repodata→solv conversion, internal index construction), not Python-fixable. Out of Track B scope. **W4 fetch-phase cProfile** confirms `requests`/`urllib3`/`cryptography` are NOT a cold-cache bottleneck: `_SSLSocket.read` is 0.69 s of 47 s (~1.5 %), 191 downloads total 2.63 s at ~14 ms/pkg, CDN-throughput-bound. Deferred-import tricks would not help W4. Raw data in [`data/phase2/s17_libmamba_index/`](data/phase2/s17_libmamba_index/) and [`data/phase4/w4_profile/`](data/phase4/w4_profile/). Executive Summary's remaining-headroom list updated with these findings; `menuinst` on Windows explicitly flagged as the only profiled-but-unmeasured dependency gap. |
