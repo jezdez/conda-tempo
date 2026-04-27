@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (S18b MatchSpec facade prototype measurement)._
+> 2026-04-24 (S18c PrefixGraph rattler seam prototype)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -752,6 +752,68 @@ coarse. To capture the S18 headline speedup we need one of:
 Neither is committed today. The facade prototype stays as a branch
 for reference. Raw data in
 [`data/phase4/w3_50k_facade_experiment/`](data/phase4/w3_50k_facade_experiment/).
+
+#### S18c: PrefixGraph-only rattler fast path (still doesn't help W3)
+
+The natural follow-up: narrow the swap to just `PrefixGraph.__init__`
+instead of doing it globally at the `MatchSpec` level. Prototype at
+[`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler),
+stacked on B2. New `conda/models/_prefix_graph_rattler.py` helper
+converts records once per call (caching the view on each conda
+record), parses deps via `rattler.MatchSpec` (deduplicated by
+dep-string within the call), runs toposort via
+`rattler.PackageRecord.sort_topologically`, and re-keys the adjacency
+dict by name+version+build identity since rattler's sort returns
+fresh instances. Correctness verified against five diverse scenarios
+(simple deps, version constraints, build constraints, no-deps root,
+linear chain); adjacency identical to the pure-Python path in every
+case.
+
+**Microbench (S18 fixture, PrefixGraph isolated):**
+
+| N | post-B2 pure Python | Trial 3 (rattler in PrefixGraph) | speedup |
+|---:|---:|---:|---:|
+| 100 | 2.71 ms | 1.47 ms | **1.8×** |
+| 1 000 | 68.5 ms | 16.4 ms | **4.2×** |
+| 5 000 | 1.28 s | 98.6 ms | **13×** |
+
+The microbench target is met: 13× on the exact operation the swap
+scopes.
+
+**End-to-end W3** (three alternating A/B iterations of 5 hyperfine
+runs each, same session):
+
+| Workload | Baseline | Trial 3 | Δ |
+|---|---:|---:|---:|
+| W3 @ 5 000 | 2.12 to 2.18 s | 2.32 to 2.35 s | +0.17 to +0.20 s |
+| W3 @ 50 000 | 11.5 to 14.9 s | 12.5 to 15.6 s | +0.6 to +1.9 s |
+
+Trial 3 regresses wall time on W3 by ~0.2 s at N=5 000 and 0.6 to
+1.9 s at N=50 000. User-time delta (more stable than wall time) is
++0.2 s at 5k, +1.0 s at 50k.
+
+**Why the disconnect**: W3 is not a PrefixGraph-bound workload.
+cProfile attributes only ~1 s of the 32 s cProfile-inflated W3@50k
+run to PrefixGraph-related functions, which is the upper bound on
+what any PrefixGraph fix can save on this workload. Trial 3 pays
+per-record conversion (~260 ms for 50 000 records) plus rattler
+parse and match overhead that the microbench fixture didn't expose
+because it ran PrefixGraph in isolation, where conversion cost is
+the whole point. On W3, PrefixGraph is called twice per invocation
+and processes only a fraction of the prefix records each time.
+
+**Takeaway**: the rattler seam inside `PrefixGraph.__init__` works
+correctly and delivers the expected microbench speedup, but the
+Track B W3 workload isn't the right benchmark for validating it
+end-to-end. Confirming the seam would need a workload where
+PrefixGraph construction is seconds of wall time (e.g.
+`conda update --all` against a real research prefix, or a bench
+that directly exercises the full-prefix PrefixGraph call inside
+`diff_for_unlink_link_precs`). Neither exists in the Track B harness
+today.
+
+Prototype kept as a reference branch. Raw data in
+[`data/phase4/w3_trial3_prefix_graph/`](data/phase4/w3_trial3_prefix_graph/).
 
 #### W4 fetch-phase: not bottlenecked on requests/urllib3
 
@@ -1576,6 +1638,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **S18c: PrefixGraph-only rattler fast path microbench wins, W3 end-to-end doesn't.** Prototype at [`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler), stacked on B2: new `conda/models/_prefix_graph_rattler.py` delegates adjacency build + toposort to rattler when available, caches record conversions on conda records, dedupes MatchSpec parse by dep-string within the call. Microbench on the S18 PrefixGraph fixture: **13× at N=5 000** (1.28 s to 98.6 ms). Correctness verified against 5 scenarios, adjacency byte-identical to pure Python. End-to-end W3 (3 alternating A/B iterations): regresses wall time by 0.2 s at N=5 000, 0.6 to 1.9 s at N=50 000. cProfile explains it: W3 only spends ~1 s in PrefixGraph-related code, so any PrefixGraph fix has ~1 s upper bound on this workload, and Trial 3 pays ~260 ms of per-record conversion plus rattler overhead the microbench fixture hid. The seam works, the W3 bench can't validate it. Prototype kept as a reference branch. Raw data in [`data/phase4/w3_trial3_prefix_graph/`](data/phase4/w3_trial3_prefix_graph/). |
 | 2026-04-24 | **S18b: MatchSpec facade prototype regresses end-to-end.** Followed S18's microbenchmark win with a concrete prototype at [`conda/conda:jezdez/experiment-matchspec-rattler-facade`](https://github.com/jezdez/conda/tree/jezdez/experiment-matchspec-rattler-facade): optional `_match_spec_rattler` helper, `MatchSpec.__init__` / `.match()` lazy-delegate to rattler when installed, record-side conversion cache. 15/15 spot-check cases match conda's reference behaviour. End-to-end W3 @ 50 000 (mac, 5 hyperfine runs same session): **stack baseline 15.05 ± 1.65 s, stack + facade 17.35 ± 0.13 s.** The facade regresses by ~2.3 s because most MatchSpec instances in the solver hot path are one-shot (built, matched once or twice, discarded), so the per-spec rattler-parse cost dominates the per-match speedup. Conclusion in the report: the facade pattern in `MatchSpec` globally is too coarse; to capture the S18 numbers we'd need to narrow to `PrefixGraph.__init__` specifically or go wider and hold rattler records in `SolverInputState`. Prototype kept as a reference branch, not merged. Raw data in [`data/phase4/w3_50k_facade_experiment/`](data/phase4/w3_50k_facade_experiment/). |
 | 2026-04-24 | **S18: py-rattler `MatchSpec` vs conda's, following [@jaimergp](https://github.com/jaimergp)'s review of #15971 (B2).** New `bench/phase2/bench_s18_matchspec_rattler.py` runs three paired microbenchmarks: parse cost, match cost, and PrefixGraph-equivalent construction. Against post-B2 conda on synthetic DAG fixtures: parsing is 3 to 4× faster in rattler, per-match cost is 5.3× faster, and `rattler.PackageRecord.sort_topologically()` is 15 to 112× faster than `PrefixGraph(records).graph` at N = 100 to 5 000. With per-call record conversion (conda `PrefixRecord` to rattler `PackageRecord`), the hybrid path is still 3.8 to 33× faster than B2 alone; conversion eats ~70 % of the hybrid-path time at N = 5 000. Takeaway: rattler's `MatchSpec` is meaningfully faster across every axis we can measure; the design question is whether to eat per-call conversion (narrow swap inside `PrefixGraph.__init__`), amortise across one solve (wider swap into `SolverInputState` / `UnlinkLinkTransaction`), or go all-in on a record-type migration. Raw data in [`data/phase2/s18_matchspec_rattler/`](data/phase2/s18_matchspec_rattler/). B2 (#15971) ships as-is; S18 is scoped as a follow-up investigation, not a blocker. |
 | 2026-04-24 | **Tracking epic filed + 11 draft PRs across four repositories.** New tracking issue [conda/conda#15969](https://github.com/conda/conda/issues/15969) (labels: `epic`, `tag::performance`), mirroring the Track A #15867 layout. All branches pushed to `jezdez` forks and filed as draft PRs using each repo's PR template, with news/ entries where the repo has one (conda, libmamba-solver, cph) and PR bodies linking back to the tracking issue + the conda-tempo research report: conda/conda#15970 (B1), #15971 (B2), #15972 (B4), #15973 (B6), #15974 (B8), #15975 (B9c); conda/conda-libmamba-solver#921 (B11); conda/conda-package-streaming#173 (B13 cps side), #174 (B14), #175 (B20); conda/conda-package-handling#318 (B13 cph consumer, depends on cps#173). Exec-summary "What shipped" and "Next steps" sections updated to show per-PR links instead of "on stack" / "no PRs yet" placeholders. |
