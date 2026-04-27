@@ -31,7 +31,7 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-04-24 (W5 end-to-end confirms PrefixGraph-rattler seam, 29.5× at N=50 000)._
+> 2026-04-24 (W5 confirmation, draft PR #15980 opened)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -769,8 +769,10 @@ for reference. Raw data in
 
 The natural follow-up: narrow the swap to just `PrefixGraph.__init__`
 instead of doing it globally at the `MatchSpec` level. Prototype at
-[`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler),
-stacked on B2. New `conda/models/_prefix_graph_rattler.py` helper
+[`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler)
+(later opened as the draft PR [conda/conda#15980](https://github.com/conda/conda/pull/15980)
+after W5 validated the seam end-to-end), stacked on B2. New
+`conda/models/_prefix_graph_rattler.py` helper
 converts records once per call (caching the view on each conda
 record), parses deps via `rattler.MatchSpec` (deduplicated by
 dep-string within the call), runs toposort via
@@ -1772,6 +1774,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-04-24 | **Draft PR #15980 opened for the optional PrefixGraph-rattler fast path.** After W5 confirmed the 29.5× speedup on realistic large-prefix installs ([jezdez@dde7a2ed2](https://github.com/conda/conda/commit/dde7a2ed2) range), the S18c experiment branch was opened as a draft PR on conda/conda, stacked on [#15971](https://github.com/conda/conda/pull/15971). PR body explains the dep story options (optional `try: import rattler`, `conda[fast]` extra, or hard dep) and the open questions before leaving draft (grammar compatibility sweep, CI dual-path test, py-rattler version pin). Explicit "do not merge before #15971 lands" note in the body since this PR's fallback is the B2 name-indexed loop from #15971. |
 | 2026-04-24 | **W5: end-to-end confirmation of the PrefixGraph-rattler seam.** `conda install -n bench_big -c conda-forge -y --dry-run requests` against the realistic bench_big fixture (exponential fan-out, version-constrained deps). A/B: **N=5 000: 4.71 s to 2.95 s (1.6×); N=10 000: 12.60 s to 4.11 s (3.1×); N=50 000: 628.8 s to 21.3 s (29.5×, saves 10 minutes).** Below N=1 000 Trial 3 has slight overhead (0.92×); crossover is between 1 000 and 5 000. **This is the user-facing workload pain point: installing anything into a 50k-record prefix goes from 10.5 minutes to 21 seconds.** Raw data in [`data/phase4/w5_install_requests/`](data/phase4/w5_install_requests/). W5 answers the B2b/B2c rattler-integration question end-to-end: the seam works, the remaining question is ecosystem-level (py-rattler as optional / mandatory / bootstrapped dep), not technical. |
 | 2026-04-24 | **S19 + realistic fixture: the PrefixGraph-rattler seam works on realistic data.** S18b and S18c both failed to show an end-to-end win on W3 because W3 isn't a PrefixGraph-bound workload (`install --dry-run --no-deps tzdata` only triggers one trivial diff call). Two new pieces of infrastructure: (a) `synthetic_realistic_prefix_records(n)` and the matching `bench/seed_big_prefix.py --simple-deps` toggle, producing records with exponential dep fan-out (mean 2.5, tail to 20), 40 % version-constrained dep lines, varied version/build/subdir, matching conda-forge's observed distribution; (b) `bench/phase2/bench_s19_diff_for_unlink_link.py`, a direct microbench of the `diff_for_unlink_link_precs` hot path with `PrefixData.iter_records` in-memory-cached so we measure graph work not disk I/O. A/B post-B2 pure Python vs Trial 3 (rattler in PrefixGraph) on realistic deps: **2.8× at N=1 000, 4.2× at N=5 000, 6.4× at N=50 000**. Absolute saving at N=50 000 is 5 minutes per call (357 s to 56 s). This is the signal W3 couldn't see. Companion end-to-end `conda update --all` workload is the natural next step for validating in-situ. Raw data in [`data/phase2/s19_diff_for_unlink_link/`](data/phase2/s19_diff_for_unlink_link/). |
 | 2026-04-24 | **S18c: PrefixGraph-only rattler fast path microbench wins, W3 end-to-end doesn't.** Prototype at [`conda/conda:jezdez/experiment-prefix-graph-rattler`](https://github.com/jezdez/conda/tree/jezdez/experiment-prefix-graph-rattler), stacked on B2: new `conda/models/_prefix_graph_rattler.py` delegates adjacency build + toposort to rattler when available, caches record conversions on conda records, dedupes MatchSpec parse by dep-string within the call. Microbench on the S18 PrefixGraph fixture: **13× at N=5 000** (1.28 s to 98.6 ms). Correctness verified against 5 scenarios, adjacency byte-identical to pure Python. End-to-end W3 (3 alternating A/B iterations): regresses wall time by 0.2 s at N=5 000, 0.6 to 1.9 s at N=50 000. cProfile explains it: W3 only spends ~1 s in PrefixGraph-related code, so any PrefixGraph fix has ~1 s upper bound on this workload, and Trial 3 pays ~260 ms of per-record conversion plus rattler overhead the microbench fixture hid. The seam works, the W3 bench can't validate it. Prototype kept as a reference branch. Raw data in [`data/phase4/w3_trial3_prefix_graph/`](data/phase4/w3_trial3_prefix_graph/). |
