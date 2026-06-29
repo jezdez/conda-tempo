@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
-| **Status** | Implementation in progress — 17 of 25 Track A PRs merged; 4 in review this sprint, 4 in draft (next sprint), targeting 26.7 (July) |
+| **Status** | Implementation in progress — 18 of 25 Track A PRs merged; 3 in review this sprint, 4 in draft (next sprint), targeting 26.7 (July) |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
 | **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -69,7 +69,7 @@ Profiling reveals two areas responsible for ~80% of the overhead (see
 Track A is twenty-five targeted changes (A1–A24, with A16 cancelled), all
 compatible with Python 3.10+. No new language features, no architectural
 changes, full backward compatibility. Estimated effort: ~400 lines of code.
-Seventeen are merged; four are in review this sprint and four are in draft for
+Eighteen are merged; three are in review this sprint and four are in draft for
 the next sprint.
 
 The following results were measured with `hyperfine --shell=none`:
@@ -580,7 +580,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 📝 [#15883](https://github.com/conda/conda/pull/15883) draft (next sprint) |
 | A12 | Eliminate redundant `context.__init__` in `main_subshell` | 3.10+ | ~15 lines | −1 ms | ✅ [#15885](https://github.com/conda/conda/pull/15885) merged |
 | A13 | Speed up `_expand_search_path` and `custom_expandvars` (fast-path + lazy `os.environ` lookup, `os.scandir`) | 3.10+ | ~30 lines | ~−2 ms per process (~5.1× cheaper per `_expand_search_path` call); CodSpeed: ×8 on `test_context_init`, −30 to −60 ms on subcommand benches via shared `custom_expandvars()` | ✅ [#15886](https://github.com/conda/conda/pull/15886) merged |
-| A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | 👀 [#15887](https://github.com/conda/conda/pull/15887) review (rebased) |
+| A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | ✅ [#15887](https://github.com/conda/conda/pull/15887) merged |
 | A15 | Make `category_map` a class-level constant | 3.10+ | ~1 line | code quality | ✅ [#15888](https://github.com/conda/conda/pull/15888) merged |
 | A16 | Lightweight init for activate/run/‑‑version | 3.10+ | ~20 lines | −3 ms | ❌ cancelled (superseded by A6/A7/A11/A12/A13) |
 | A17 | Start `ContextStack` with single slot | 3.10+ | ~5 lines | code quality | ✅ [#15889](https://github.com/conda/conda/pull/15889) merged |
@@ -1569,8 +1569,8 @@ alone saves ~2.1 seconds per 50k records (3.2× faster init, 5.6× faster dump).
 Combined startup + runtime estimate for `conda install` at solver scale:
 **~2.5 seconds saved**.
 
-Seventeen PRs are merged (A1, A4, A5, A5b, A7, A10, A12, A13, A15, A17, A18,
-A19a, A20a, A20b, A21, A23, A24). Four PRs are review-ready (A6, A8, A14,
+Eighteen PRs are merged (A1, A4, A5, A5b, A7, A10, A12, A13, A14, A15, A17,
+A18, A19a, A20a, A20b, A21, A23, A24). Three PRs are review-ready (A6, A8,
 A22); four remain in draft for the next sprint (A2/A3, A9, A11, A19b).
 A13 ([#15886](https://github.com/conda/conda/pull/15886)) speeds up
 `_expand_search_path` and `custom_expandvars` directly (~5.1× faster
@@ -1583,7 +1583,7 @@ research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
 [Track B](track-b-transaction.md).
 
-Track A implementation is underway — seventeen PRs merged, four in review,
+Track A implementation is underway — eighteen PRs merged, three in review,
 and four in draft for the next sprint.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
@@ -1594,6 +1594,7 @@ and four in draft for the next sprint.
 
 | Date | Change |
 |---|---|
+| 2026-06-29 | **A14 [#15887](https://github.com/conda/conda/pull/15887) merged.** The `context.root_writable` memoization work landed on 2026-06-29 18:04 UTC (merge commit `7a4e98ce98`). Track A is now **18 of 25 PRs merged**. The sprint review set is down to three PRs: A8 [#15880](https://github.com/conda/conda/pull/15880), A6 [#15877](https://github.com/conda/conda/pull/15877), and A22 [#15893](https://github.com/conda/conda/pull/15893). Four PRs remain in draft for the next sprint: A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A9 [#15881](https://github.com/conda/conda/pull/15881), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916). Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) updated with the new merged count and status table. |
 | 2026-05-28 | **A10 [#15882](https://github.com/conda/conda/pull/15882) merged.** The lazy `ruamel.yaml` import work landed on 2026-05-28 09:25 UTC (merge commit `7aea1a2514`). Track A is now **17 of 25 PRs merged**. The sprint review set is down to four PRs: A14 [#15887](https://github.com/conda/conda/pull/15887), A8 [#15880](https://github.com/conda/conda/pull/15880), A6 [#15877](https://github.com/conda/conda/pull/15877), and A22 [#15893](https://github.com/conda/conda/pull/15893). Four PRs remain in draft for the next sprint: A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A9 [#15881](https://github.com/conda/conda/pull/15881), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916). Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) updated with the new merged count and status table. |
 | 2026-05-06 | **Track A status check (T+13 since 2026-04-23).** No PRs merged since last sweep — all 9 remain review-blocked. All 9 rebased onto current `main` (A14 had a conflict in `tests/base/test_context.py` from new `test_preview_*` tests — resolved by keeping both test groups; the other 8 rebased cleanly). Track A missed the May release (26.5) due to review bandwidth — target moved to July release (26.7). **Sprint review shortlist** (5 PRs, ready for review, ordered by diff size): A14 [#15887](https://github.com/conda/conda/pull/15887) (+45 −1), A8 [#15880](https://github.com/conda/conda/pull/15880) (+92 −6), A6 [#15877](https://github.com/conda/conda/pull/15877) (+112 −3), A22 [#15893](https://github.com/conda/conda/pull/15893) (+139 −97), A10 [#15882](https://github.com/conda/conda/pull/15882) (+171 −20). **Deferred to next sprint** (4 PRs, converted to draft): A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A9 [#15881](https://github.com/conda/conda/pull/15881), A11 [#15883](https://github.com/conda/conda/pull/15883), A19b [#15916](https://github.com/conda/conda/pull/15916). Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) body updated with sprint/draft split and new status table. No code changes beyond the rebase conflict resolution. |
 | 2026-04-29 | **Track A sweep (T+6 since 2026-04-23).** All nine open PRs re-checked — all `MERGEABLE`, none need a rebase to merge, behind-counts 4–15 (cosmetic drift only, no conflicts). **All previously-amber CI is now green:** A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A6 [#15877](https://github.com/conda/conda/pull/15877), A11 [#15883](https://github.com/conda/conda/pull/15883) "pending rerun" cleared; A9 [#15881](https://github.com/conda/conda/pull/15881) DNS flake gone; A14 [#15887](https://github.com/conda/conda/pull/15887) CodSpeed "Different runtime environments" noise gone; A19b [#15916](https://github.com/conda/conda/pull/15916) Windows `ConnectionResetError(10054)` gone; A22 [#15893](https://github.com/conda/conda/pull/15893) ppc64le + CodSpeed combo gone. Every open PR's checks rollup is now `87/87 SUCCESS` (or `170/170` on A19b which has the slots/dataclass test fan-out). **All nine are blocked solely on `REVIEW_REQUIRED`** (`mergeStateStatus: BLOCKED`, `mergeable: MERGEABLE`). Per-PR thread state: A2/A3 [#15868](https://github.com/conda/conda/pull/15868) — 2026-04-10 ping to @kenodegard still unanswered, no formal review yet; A6 [#15877](https://github.com/conda/conda/pull/15877), A9 [#15881](https://github.com/conda/conda/pull/15881), A11 [#15883](https://github.com/conda/conda/pull/15883), A14 [#15887](https://github.com/conda/conda/pull/15887) — no reviews; A8 [#15880](https://github.com/conda/conda/pull/15880) — informal "I like this idea" from @dholth on 2026-04-15, no formal review; A10 [#15882](https://github.com/conda/conda/pull/15882) — @kenodegard's deprecation question addressed in `9a71ae516` (`CondaYAMLRepresenter` now exits via `PendingDeprecationWarning` with removal in 27.3, class lives in cached `_representer_cls()`), awaiting re-review; A19b [#15916](https://github.com/conda/conda/pull/15916) — most-active thread (8 review comments across @dholth, @kenodegard, @jezdez between 2026-04-15 and 2026-04-24, last reply was @jezdez's `✨` on 2026-04-24 acknowledging @dholth's post-fix comment), awaiting reviewer return; A22 [#15893](https://github.com/conda/conda/pull/15893) — @dholth's 2026-04-15 "module-level `__getattr__` affecting everything" concern was the trigger for A23 [#15925](https://github.com/conda/conda/pull/15925), which has since merged; A22 was rebased to use `deprecated.constant(factory=...)` from A23 instead of the bare `__getattr__`, awaiting re-review on the simplified diff. Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) body refreshed: dropped the now-obsolete CodSpeed and infra-flake footnotes, flipped all open-PR CI cells to 🟢, added a single sentence summarising the 9-of-9 review-blocked state. No code changes pushed in this sweep. |
