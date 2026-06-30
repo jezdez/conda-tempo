@@ -1,0 +1,14 @@
+{
+  "host": "TODO: dedicated Windows x64 PC model, CPU, RAM",
+  "os": "TODO: Windows version and build",
+  "architecture": "TODO: x86_64 or ARM64",
+  "fs": "TODO: NTFS on internal SSD/NVMe",
+  "disk": "TODO: disk model",
+  "power_profile": "TODO: high performance / best performance, plugged in",
+  "defender_or_av": "TODO: enabled for primary run; note product and exclusions",
+  "conda_version": "TODO",
+  "python_version": "TODO",
+  "pixi_version": "TODO",
+  "date": "YYYY-MM-DD",
+  "notes": "Close heavy background apps before the run; record thermal/load anomalies."
+}

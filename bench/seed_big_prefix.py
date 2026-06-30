@@ -30,7 +30,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -94,7 +96,7 @@ def prefix_path(name: str) -> Path | None:
     """Look up an existing env by name. Returns None if not found."""
     try:
         out = subprocess.check_output(
-            ["conda", "info", "--envs", "--json"], text=True
+            [*conda_command(), "info", "--envs", "--json"], text=True
         )
     except (OSError, subprocess.CalledProcessError) as e:
         sys.exit(f"error: cannot query conda envs: {e}")
@@ -103,6 +105,20 @@ def prefix_path(name: str) -> Path | None:
         if Path(env_path).name == name:
             return Path(env_path)
     return None
+
+
+def conda_command() -> list[str]:
+    """Return the conda command for subprocess calls.
+
+    The pixi Windows environment may not expose a working ``conda`` console
+    script, so default to the active Python interpreter's module entry point.
+    ``CONDA_BENCH_CONDA`` keeps the old command-based path available for
+    ad-hoc runs.
+    """
+    override = os.environ.get("CONDA_BENCH_CONDA")
+    if override:
+        return shlex.split(override)
+    return [sys.executable, "-m", "conda"]
 
 
 def _realistic_records(n: int, *, seed: int = 42):
@@ -204,7 +220,14 @@ def main() -> int:
     prefix = prefix_path(ns.name)
     if prefix is None:
         subprocess.check_call(
-            ["conda", "create", "-n", ns.name, "-y", "--no-default-packages"]
+            [
+                *conda_command(),
+                "create",
+                "-n",
+                ns.name,
+                "-y",
+                "--no-default-packages",
+            ]
         )
         prefix = prefix_path(ns.name)
         if prefix is None:

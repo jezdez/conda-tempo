@@ -26,7 +26,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
-DATA = REPO_ROOT / "data" / "phase2"
+DEFAULT_PHASE = "phase2"
 
 
 def main() -> int:
@@ -40,13 +40,18 @@ def main() -> int:
         "--mode", choices=["fast", "full"], default="full",
         help="pyperf sample budget (default: full)",
     )
+    ap.add_argument(
+        "--phase",
+        default=DEFAULT_PHASE,
+        help="output dir under data/ (default: phase2)",
+    )
     ns = ap.parse_args()
 
     script = HERE / f"bench_{ns.suspect_id}.py"
     if not script.is_file():
         sys.exit(f"error: {script} not found")
 
-    out_dir = DATA / ns.suspect_id
+    out_dir = REPO_ROOT / "data" / ns.phase / ns.suspect_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
     failed = []
