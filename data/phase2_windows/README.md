@@ -1,9 +1,13 @@
-# Windows Phase 2 Smoke Data
+# Windows Phase 2 Data
 
-These `pyperf_*.json` files were produced with `--mode fast` while
-validating the native Windows harness on 2026-07-01. They confirm that
-the Windows runner, fixture setup, S8 package-cache handoff, and S10
-benchmark execute on win-64.
+These `pyperf_*.json` files were produced with full pyperf defaults on
+2026-07-01 via:
 
-Do not treat this directory as full-budget Phase 2 data until
-`pixi run windows-phase2` has been rerun without `--phase2-mode fast`.
+```powershell
+pixi run windows-phase2
+```
+
+The run completed S6, S7, S8, S9, S10, and S11 on the dedicated
+win-64/x86_64 host described in `data/machine_windows.json`. S8 is the
+runtime outlier: `pyperf_n5.json` took 2 h 41 min because it benchmarks
+serial extraction plus five thread-pool sizes with 60 values each.

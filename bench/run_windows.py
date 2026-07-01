@@ -23,6 +23,7 @@ DEFAULT_PHASE = "phase1_windows"
 DEFAULT_PROFILE_PHASE = "phase1_windows"
 DEFAULT_PHASE2 = "phase2_windows"
 DEFAULT_W3_50K_TIMEOUT = 3600
+DEFAULT_W3_STRATEGY_TIMEOUT = 1800
 PYTHON = sys.executable
 
 
@@ -184,8 +185,11 @@ def ensure_extract_cache(min_packages: int) -> None:
     )
 
 
-def seed_big(records: int) -> None:
-    run([PYTHON, "bench/seed_big_prefix.py", "--name", "bench_big", "--records", str(records)])
+def seed_big(records: int, *, simple_deps: bool = False) -> None:
+    cmd = [PYTHON, "bench/seed_big_prefix.py", "--name", "bench_big", "--records", str(records)]
+    if simple_deps:
+        cmd.append("--simple-deps")
+    run(cmd)
 
 
 def summarize_times(times: list[float]) -> dict[str, float | list[float]]:
@@ -226,6 +230,37 @@ def write_result(phase: str, workload: str, command: list[str], times: list[floa
         **extra,
     }
     (out_dir / "run.json").write_text(json.dumps(run_meta, indent=2, sort_keys=True))
+
+
+def git_value(repo: Path, *args: str) -> str | None:
+    proc = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip()
+
+
+def sibling_stack() -> dict[str, dict[str, str | None]]:
+    stack = {}
+    for repo_name in (
+        "conda",
+        "conda-libmamba-solver",
+        "conda-package-handling",
+        "conda-package-streaming",
+    ):
+        repo = REPO_ROOT.parent / repo_name
+        if not repo.is_dir():
+            stack[repo_name] = {"branch": None, "head": None}
+            continue
+        stack[repo_name] = {
+            "branch": git_value(repo, "branch", "--show-current"),
+            "head": git_value(repo, "rev-parse", "--short", "HEAD"),
+        }
+    return stack
 
 
 def run_workload(name: str, *, phase: str, records: int = 5000, timeout: int | None = None) -> None:
@@ -278,6 +313,65 @@ def run_workload(name: str, *, phase: str, records: int = 5000, timeout: int | N
             "runner": "bench/run_windows.py",
         },
     )
+
+
+def run_w3_strategy(
+    *,
+    phase: str,
+    records_list: list[int],
+    timeout: int,
+    simple_deps: bool,
+) -> None:
+    """Run bounded single-pass W3 probes for large-prefix strategy work."""
+    out_dir = REPO_ROOT / "data" / phase / "w3_strategy"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    command = conda_cmd(*WORKLOADS["w3"]["args"])
+    fixture_shape = "simple-deps" if simple_deps else "realistic"
+    results = []
+    for records in records_list:
+        seed_big(records, simple_deps=simple_deps)
+        started = time.perf_counter()
+        try:
+            proc = run(command, timeout=timeout, check=False)
+            elapsed = time.perf_counter() - started
+        except subprocess.TimeoutExpired:
+            elapsed = float(timeout)
+            proc = None
+        status = "timeout" if proc is None else ("ok" if proc.returncode == 0 else "failed")
+        result = {
+            "records": records,
+            "fixture_shape": fixture_shape,
+            "status": status,
+            "elapsed_seconds": elapsed,
+            "timeout_seconds": timeout,
+            "returncode": None if proc is None else proc.returncode,
+            "stdout_tail": "" if proc is None else proc.stdout[-2000:],
+            "stderr_tail": "timeout" if proc is None else proc.stderr[-2000:],
+        }
+        results.append(result)
+        print(f"w3 strategy {records} {fixture_shape}: {status} in {elapsed:.3f}s", flush=True)
+
+    payload = {
+        "command": " ".join(command),
+        "conda_version": conda_version(),
+        "date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "phase": phase,
+        "runner": "bench/run_windows.py w3-strategy",
+        "stack": sibling_stack(),
+        "results": results,
+    }
+    (out_dir / f"{fixture_shape}.json").write_text(json.dumps(payload, indent=2, sort_keys=True))
+
+    lines = [
+        "| Records | Fixture | Status | Elapsed [s] | Timeout [s] |",
+        "|---:|---|---|---:|---:|",
+    ]
+    for result in results:
+        lines.append(
+            f"| {result['records']} | {fixture_shape} | {result['status']} | "
+            f"{result['elapsed_seconds']:.3f} | {result['timeout_seconds']} |"
+        )
+    (out_dir / f"{fixture_shape}.md").write_text("\n".join(lines) + "\n")
 
 
 def run_profiles(*, phase: str) -> None:
@@ -338,6 +432,7 @@ def main() -> int:
             "w2",
             "w3",
             "w3-50k",
+            "w3-strategy",
             "w4",
             "phase1",
             "phase1-profile",
@@ -349,6 +444,18 @@ def main() -> int:
     ap.add_argument("--phase", default=None, help="output dir under data/")
     ap.add_argument("--phase2-mode", choices=["fast", "full"], default="full")
     ap.add_argument("--timeout", type=int, default=None)
+    ap.add_argument(
+        "--w3-records",
+        nargs="+",
+        type=int,
+        default=[5000, 10000, 50000],
+        help="record counts for w3-strategy (default: 5000 10000 50000)",
+    )
+    ap.add_argument(
+        "--w3-simple-deps",
+        action="store_true",
+        help="use the simple-deps bench_big fixture for w3-strategy",
+    )
     ns = ap.parse_args()
 
     phase = ns.phase or (DEFAULT_PHASE if ns.mode != "phase4" else "phase4_windows")
@@ -357,6 +464,13 @@ def main() -> int:
         run_workload(ns.mode, phase=phase, timeout=ns.timeout)
     elif ns.mode == "w3-50k":
         run_workload("w3", phase=phase, records=50000, timeout=ns.timeout or DEFAULT_W3_50K_TIMEOUT)
+    elif ns.mode == "w3-strategy":
+        run_w3_strategy(
+            phase=phase,
+            records_list=ns.w3_records,
+            timeout=ns.timeout or DEFAULT_W3_STRATEGY_TIMEOUT,
+            simple_deps=ns.w3_simple_deps,
+        )
     elif ns.mode == "phase1":
         for workload in ("w1", "w2", "w3"):
             run_workload(workload, phase=phase)

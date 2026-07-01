@@ -247,6 +247,10 @@ cmd = "python bench/run_windows.py w3"
 description = "Windows W3: synthetic-prefix --dry-run install with 50k records"
 cmd = "python bench/run_windows.py w3-50k --phase phase4_windows"
 
+[target.win.tasks.windows-w3-strategy]
+description = "Windows W3: bounded single-pass large-prefix probes"
+cmd = "python bench/run_windows.py w3-strategy --phase phase4_windows"
+
 [target.win.tasks.windows-w4]
 description = "Windows W4: cold-cache data-science install"
 cmd = "python bench/run_windows.py w4 --phase phase4_windows"
