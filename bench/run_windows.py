@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PHASE = "phase1_windows"
 DEFAULT_PROFILE_PHASE = "phase1_windows"
 DEFAULT_PHASE2 = "phase2_windows"
+DEFAULT_W3_50K_TIMEOUT = 3600
 PYTHON = sys.executable
 
 
@@ -112,9 +113,13 @@ def conda_version() -> str:
     return proc.stdout.strip().split()[-1]
 
 
-def package_cache_dir() -> Path:
+def package_cache_dirs() -> list[Path]:
     proc = run(conda_cmd("config", "--show", "pkgs_dirs", "--json"))
-    pkgs_dir = Path(json.loads(proc.stdout)["pkgs_dirs"][0])
+    return [Path(pkgs_dir) for pkgs_dir in json.loads(proc.stdout)["pkgs_dirs"]]
+
+
+def package_cache_dir() -> Path:
+    pkgs_dir = package_cache_dirs()[0]
     if pkgs_dir.anchor == str(pkgs_dir) or len(pkgs_dir.parts) < 3:
         raise SystemExit(f"refusing to wipe unsafe package cache path: {pkgs_dir}")
     return pkgs_dir
@@ -125,6 +130,58 @@ def wipe_package_cache() -> Path:
     shutil.rmtree(pkgs_dir, ignore_errors=True)
     pkgs_dir.mkdir(parents=True, exist_ok=True)
     return pkgs_dir
+
+
+def cached_conda_packages(*, min_size_bytes: int = 1_000_000) -> list[Path]:
+    packages = []
+    for pkgs_dir in package_cache_dirs():
+        if not pkgs_dir.is_dir():
+            continue
+        for package in pkgs_dir.glob("*.conda"):
+            try:
+                size = package.stat().st_size
+            except OSError:
+                continue
+            if size >= min_size_bytes:
+                packages.append(package)
+    return packages
+
+
+def ensure_extract_cache(min_packages: int) -> None:
+    os.environ["CONDA_BENCH_PKGS_DIRS"] = os.pathsep.join(
+        str(pkgs_dir) for pkgs_dir in package_cache_dirs()
+    )
+    packages = cached_conda_packages()
+    if len(packages) >= min_packages:
+        return
+
+    env_name = "bench_s8_cache_seed"
+    remove_env(env_name)
+    run(
+        conda_cmd(
+            "create",
+            "-n",
+            env_name,
+            "-c",
+            "conda-forge",
+            "-y",
+            "python=3.13",
+            "pandas",
+            "scikit-learn",
+            "matplotlib",
+            "jupyter",
+        )
+    )
+    remove_env(env_name)
+    packages = cached_conda_packages()
+    if len(packages) < min_packages:
+        raise SystemExit(
+            f"S8 needs at least {min_packages} cached .conda packages; "
+            f"found {len(packages)} after seeding"
+        )
+    os.environ["CONDA_BENCH_PKGS_DIRS"] = os.pathsep.join(
+        str(pkgs_dir) for pkgs_dir in package_cache_dirs()
+    )
 
 
 def seed_big(records: int) -> None:
@@ -235,12 +292,12 @@ def run_profiles(*, phase: str) -> None:
             remove_env(env_name)
         if name == "w4":
             wipe_package_cache()
-        run([PYTHON, "bench/run_cprofile.py", name, "--phase", phase, "--", *args])
+        run([PYTHON, "bench/run_cprofile.py", "--phase", phase, name, "--", *args])
         if env_name:
             remove_env(env_name)
         if name == "w4":
             wipe_package_cache()
-        run([PYTHON, "bench/parse_time_recorder.py", name, "--phase", phase, "--", *args])
+        run([PYTHON, "bench/parse_time_recorder.py", "--phase", phase, name, "--", *args])
         if env_name:
             remove_env(env_name)
 
@@ -255,6 +312,8 @@ def run_phase2(*, phase: str, mode: str) -> None:
         ("s11_libmamba_installed", ["1000", "5000", "10000"]),
     ]
     for suspect, sizes in specs:
+        if suspect == "s8_extract_pool":
+            ensure_extract_cache(max(int(size) for size in sizes))
         run(
             [
                 PYTHON,
@@ -297,7 +356,7 @@ def main() -> int:
     if ns.mode in {"w1", "w2", "w3", "w4"}:
         run_workload(ns.mode, phase=phase, timeout=ns.timeout)
     elif ns.mode == "w3-50k":
-        run_workload("w3", phase=phase, records=50000, timeout=ns.timeout or 300)
+        run_workload("w3", phase=phase, records=50000, timeout=ns.timeout or DEFAULT_W3_50K_TIMEOUT)
     elif ns.mode == "phase1":
         for workload in ("w1", "w2", "w3"):
             run_workload(workload, phase=phase)
@@ -308,7 +367,7 @@ def main() -> int:
     elif ns.mode == "phase4":
         for workload in ("w1", "w2", "w3", "w4"):
             run_workload(workload, phase=phase)
-        run_workload("w3", phase=phase, records=50000, timeout=ns.timeout or 300)
+        run_workload("w3", phase=phase, records=50000, timeout=ns.timeout or DEFAULT_W3_50K_TIMEOUT)
     elif ns.mode == "all":
         for workload in ("w1", "w2", "w3"):
             run_workload(workload, phase=phase)

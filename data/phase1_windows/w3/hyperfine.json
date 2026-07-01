@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "command": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\python.exe -m conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata",
+      "mean": 154.7758829199942,
+      "stddev": 2.557639707625617,
+      "median": 156.76445149999927,
+      "min": 150.9887034999847,
+      "max": 156.9535823999904,
+      "times": [
+        150.9887034999847,
+        156.77679999999236,
+        156.76445149999927,
+        152.39587720000418,
+        156.9535823999904
+      ]
+    }
+  ]
+}

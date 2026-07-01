@@ -27,6 +27,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
 DEFAULT_PHASE = "phase2"
+INHERITED_ENV = "CONDA_BENCH_PKGS_DIRS,CONDA_BENCH_CONDA,CONDA_BENCH_TMPDIR"
 
 
 def main() -> int:
@@ -64,6 +65,7 @@ def main() -> int:
             sys.executable,
             str(script),
             "--output", str(out_path),
+            "--inherit-environ", INHERITED_ENV,
             "-N", str(n),
         ]
         if ns.mode == "fast":

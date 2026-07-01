@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "command": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\python.exe -m conda create -n bench_w1 -c conda-forge -y python=3.13 requests",
+      "mean": 7.383493200002704,
+      "stddev": 0.19127522725847096,
+      "median": 7.248660000012023,
+      "min": 7.215752899996005,
+      "max": 7.620887199998833,
+      "times": [
+        7.215752899996005,
+        7.613736900006188,
+        7.248660000012023,
+        7.218429000000469,
+        7.620887199998833
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "conda_version": "26.5.4.dev81",
+  "date": "2026-07-01T14:42:22Z",
+  "failures": [],
+  "phase": "phase4_windows",
+  "pkgs_dir": null,
+  "records": null,
+  "runner": "bench/run_windows.py"
+}
