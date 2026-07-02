@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint recorded; nine tracked PRs ready for review, one merged, two remain draft |
+| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint recorded; nine tracked PRs ready for review, one merged, one draft, one research PR closed |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,8 +31,9 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-07-02 (PR readiness sweep; no headline measurement changes
-> since the 2026-07-01 Windows x86_64 rerun checkpoint)._
+> 2026-07-02 (PR readiness sweep plus B15 close-out; no headline
+> measurement changes since the 2026-07-01 Windows x86_64 rerun
+> checkpoint)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -99,7 +100,7 @@ Broken out by workload type — the stack is not uniform across them:
 
 Five fixes in `conda`, one in `conda-libmamba-solver`, three in
 `conda-package-streaming`, one in `conda-package-handling`, plus
-three dropped or rescoped after measurement:
+dropped, superseded, or research-only branches after measurement:
 
 | ID | Repo | Fixes | Phase 2 signal | PR |
 |---|---|---|---|---|
@@ -117,6 +118,7 @@ three dropped or rescoped after measurement:
 | B13 (cps) | cps | Accept pre-opened `ZipFile` via `zf=` kwarg | 2× per archive | [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) merged |
 | B13 (cph) | cph | Thread one `ZipFile` through both components (depends on cps#173) | 2× per archive | [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) ready for review |
 | B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract | [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174) ready for review |
+| B15 | conda | Optional py-rattler fast path in `PrefixGraph.__init__` | W5 29.5× at N=50 000, but small-prefix regressions and high mapping/dual-path maintenance cost | [conda/conda#15980](https://github.com/conda/conda/pull/15980) closed as research-only; not pursuing this optional-shim shape |
 | B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review |
 
 Total: ~250 LOC across all four repositories, no new dependencies,
@@ -155,18 +157,21 @@ bottleneck directly observable rather than speculative:
   `conda-meta/*.json` files.** Track A A21 (PrefixData I/O)
   already tackled this direction; a prefix-level mtime-cache or
   batched JSON reads would be the next incremental step.
-- **PrefixGraph on realistic large-prefix installs is the next big
-  opportunity.** The shipping stack (B2 name-indexed PrefixGraph)
-  fixes the worst quadratic, but on realistic deps + large N it's
-  still the bottleneck for `conda install <anything>` on a
-  long-lived research env. W5 shows `conda install requests`
-  against a 50 000-record bench_big takes 10.5 minutes on the
-  shipping stack and 21 seconds with an experimental rattler-backed
-  `PrefixGraph.__init__` (see S18c/S19/W5). The speedup is
-  ecosystem-gated on adding py-rattler as a conda dep; the
-  technical path is clear. See the
-  [#15971 review thread](https://github.com/conda/conda/pull/15971)
-  for the discussion.
+- **PrefixGraph on realistic large-prefix installs is still the next
+  big opportunity, but B15 is the wrong shipping shape.** The
+  shipping stack (B2 name-indexed PrefixGraph) fixes the worst
+  quadratic, but on realistic deps + large N it's still the
+  bottleneck for `conda install <anything>` on a long-lived research
+  env. W5 shows `conda install requests` against a 50 000-record
+  bench_big takes 10.5 minutes on the shipping stack and 21 seconds
+  with an experimental rattler-backed `PrefixGraph.__init__` (see
+  S18c/S19/W5). However, B15's optional py-rattler shim was closed
+  as research-only: it would make rattler a quasi-optional dependency,
+  carry a conda-record to rattler-record mapping layer, and require
+  dual-path compatibility tests for grammar, ordering, cycles, and
+  platform edge cases. Future rattler work should be a wider
+  first-class record/spec architecture question, not a narrow optional
+  fast path inside `PrefixGraph.__init__`.
 - **Windows is now partially measured, not final-stack validated.**
   The 2026-07-01 dedicated win-64/x86_64 checkpoint includes Phase 1,
   full Phase 2, S10, and a B2+B11 W3 50k strategy run, but it is not a
@@ -177,21 +182,20 @@ bottleneck directly observable rather than speculative:
 
 As of 2026-07-02, the tracked PR state is: B13 (cps) merged;
 B1, B2, B4, B6, B8, B11, B13 (cph), B14, and B20 ready for review;
-and B9c plus B15 still draft because their PR bodies list explicit
-pre-review work. The nearest-term work is:
+B9c remains draft pending manual macOS verification; and B15 is
+closed as a research-only branch because its optional-rattler shim is
+not the right maintenance shape. The nearest-term work is:
 
 1. Finish the B9c manual macOS verification note, then move it from
    draft to ready-for-review.
-2. Keep B15 draft until its threshold, benchmark, grammar-coverage,
-   and test-coverage items are resolved.
-3. Get Windows CI on the branches that touch `gateways/disk/*`
+2. Get Windows CI on the branches that touch `gateways/disk/*`
    (B6, B8, B9c) and verify menuinst-adjacent paths. Windows now has
    dedicated x86_64 harness data, but not CI coverage or antivirus-on
    transaction profiles.
-4. Add Linux x86_64 numbers to complement the arm64 ones; all
+3. Add Linux x86_64 numbers to complement the arm64 ones; all
    CI and most prod installs are x86_64 and syscall costs are
    not perfectly identical to arm64.
-5. Rerun the Windows W3/W4 stack once the exact April stack branches
+4. Rerun the Windows W3/W4 stack once the exact April stack branches
    are available, or build an equivalent local stack branch, so the
    Windows checkpoint can be compared like-for-like with macOS/Linux.
 
@@ -1866,7 +1870,8 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
-| 2026-07-02 | **PR readiness sweep.** Marked the unconditional green drafts ready for review: B2 [conda/conda#15971](https://github.com/conda/conda/pull/15971), B4 [#15972](https://github.com/conda/conda/pull/15972), B6 [#15973](https://github.com/conda/conda/pull/15973), B8 [#15974](https://github.com/conda/conda/pull/15974), and B11 [conda/conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921). Live status is now: B13 cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) merged; B1, B2, B4, B6, B8, B11, B13 cph [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318), B14 [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), and B20 [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review; B9c [#15975](https://github.com/conda/conda/pull/15975) and B15 [#15980](https://github.com/conda/conda/pull/15980) remain draft because their PR bodies still list explicit pre-review work. B13 cph is now green after the cps-side change landed and the runtime requirement was bumped. Tracking ticket [conda/conda#15969](https://github.com/conda/conda/issues/15969) refreshed to link to the canonical report summary and show the current PR states. No measurements changed, so the headline macOS/Linux numbers and Windows checkpoint data are unchanged. |
+| 2026-07-02 | **B15 closed as research-only.** Closed [conda/conda#15980](https://github.com/conda/conda/pull/15980) rather than moving it toward review. The W5/S19 measurements remain useful: rattler-backed `PrefixGraph` construction can be dramatically faster for truly large prefixes. The PR shape is not shippable, though, because it makes py-rattler a quasi-optional dependency inside conda, adds conda-record → rattler-record mapping, requires fallback behavior for grammar mismatches, and would need dual-path tests for graph ordering, cycles, noarch/Windows behavior, and activation thresholds. Keep B2 [#15971](https://github.com/conda/conda/pull/15971) as the Track B `PrefixGraph` implementation; treat future rattler work as a wider first-class record/spec architecture question, not an optional shim in `PrefixGraph.__init__`. No measurements changed. |
+| 2026-07-02 | **PR readiness sweep.** Marked the unconditional green drafts ready for review: B2 [conda/conda#15971](https://github.com/conda/conda/pull/15971), B4 [#15972](https://github.com/conda/conda/pull/15972), B6 [#15973](https://github.com/conda/conda/pull/15973), B8 [#15974](https://github.com/conda/conda/pull/15974), and B11 [conda/conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921). Live status is now: B13 cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) merged; B1, B2, B4, B6, B8, B11, B13 cph [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318), B14 [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), and B20 [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review; B9c [#15975](https://github.com/conda/conda/pull/15975) remains draft because its PR body still lists explicit pre-review work; B15 [#15980](https://github.com/conda/conda/pull/15980) was subsequently closed as research-only (see above). B13 cph is now green after the cps-side change landed and the runtime requirement was bumped. Tracking ticket [conda/conda#15969](https://github.com/conda/conda/issues/15969) refreshed to link to the canonical report summary and show the current PR states. No measurements changed, so the headline macOS/Linux numbers and Windows checkpoint data are unchanged. |
 | 2026-07-01 | **Windows x86_64 rerun checkpoint.** Added a native Windows harness (`bench/run_windows.py`), `win-64` Pixi support, Windows tasks, an S10 `CreatePrefixRecordAction` / `conda-meta` JSON-write benchmark, and Windows machine metadata. Dedicated host: Intel NUC11BTMi7, Windows 11 Pro 10.0.26200, NTFS on Samsung 990 PRO NVMe, High performance power plan, Microsoft Defender disabled. Baseline Windows Phase 1: W1 **6.19 s ± 0.08**, W2 **43.47 s ± 0.17**, W3 5k **154.78 s ± 2.56**. Final Phase 4 rerun used `conda/main ca9e1b0ee`, `conda-libmamba-solver/track-b-b11-cache-installed c7977ae`, `conda-package-handling/track-b-b13-reuse-zipfile c3b0afe`, and `conda-package-streaming/track-b-b20-safety-fast-path ec20ed7`: W1 **7.38 s ± 0.19**, W2 **61.10 s ± 2.04**, W3 5k **179.39 s ± 1.05**, W4 **103.54 s ± 5.70**. W3 50k did not finish a direct dry-run within 1800 s even with B11 active, so `data/phase4_windows/w3_50k/run.json` records a timeout instead of a hyperfine result. The follow-up W3 5k profile showed the timeout was a branch-alignment issue: this run used `conda/main` without B2, and `PrefixGraph.__init__` dominated the profiled W3 5k run. Full-budget Windows Phase 2 then completed via `pixi run windows-phase2`; S10 N=5000 measured **6.58 s ± 0.15**, and S11 N=10000 with B11 measured **0.56 µs ± 0.04 µs** per installed access. A new bounded `w3-strategy` runner measured the B2+B11-aligned Windows W3 path: realistic 5k **9.25 s**, 10k **27.64 s**, 50k **574.61 s**; simple-deps 50k **55.08 s**. This is not folded into the headline Phase-4 table because the April `track-b-stack` branches were not available as remote stack branches on the Windows host and the July branch combination did not reproduce the macOS/Linux stacked behavior. |
 | 2026-04-29 | **Track B sweep (T+5 since 2026-04-24).** All 12 open PRs re-checked — all `MERGEABLE`, none need a rebase to merge, behind-counts 0–4 (cosmetic drift only, no conflicts). All 12 are still draft; none have been promoted to ready-for-review yet. **CI: 11 of 12 green, 1 structurally-red.** Green: B1 [#15970](https://github.com/conda/conda/pull/15970), B2 [#15971](https://github.com/conda/conda/pull/15971), B4 [#15972](https://github.com/conda/conda/pull/15972), B6 [#15973](https://github.com/conda/conda/pull/15973), B8 [#15974](https://github.com/conda/conda/pull/15974), B9c [#15975](https://github.com/conda/conda/pull/15975), B11 [conda/conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921), B13 cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173), B14 [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), B15 [#15980](https://github.com/conda/conda/pull/15980), B20 [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175). **Structurally-red:** B13 cph [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) — first job (`Test on ubuntu-latest, Python 3.8`) fails with `TypeError: stream_conda_component() got an unexpected keyword argument 'zf'` and matrix fail-fast cancels the rest. Root cause is the cps#173 → cph#318 stack: cph#318 calls the new `zf=` kwarg added by cps#173, but cph CI installs the **released** `conda-package-streaming` which doesn't ship `zf=` yet. Will go green automatically once cps#173 merges and a `cps` release is published; no PR-level fix needed. Tracking ticket [#15969](https://github.com/conda/conda/issues/15969) body refreshed: added a one-line status sentence above the Tasks table, added a CI column (🟢 / 🟡 stacked-on-cps#173) and a footnote spelling out the cph-stacks-on-cps mechanic. **Reviewer engagement on 2026-04-27 across 5 of 12 PRs** (the remaining 7 only have the CodSpeed bot comment — B4, B6, B9c, B11, B14, B15, cph#318): **B1 [#15970](https://github.com/conda/conda/pull/15970)** — @dholth `COMMENTED` review with one inline (`ouch`) on the line that documents the O(N²) hot path B1 fixes; no changes requested. **B2 [#15971](https://github.com/conda/conda/pull/15971)** — most-active thread; six issue-comments between @jezdez and @jaimergp covering S18 (py-rattler MatchSpec microbench) and the four trials in [`#s18b-matchspec-facade-prototype-the-naive-approach-regresses`](track-b-transaction.md#s18b-matchspec-facade-prototype-the-naive-approach-regresses). @jaimergp's last substantive reply suggested a wider `@dataclass` facade with `_inner` backing across `MatchSpec` / `PackageRecord` / `VersionSpec`; @jezdez's closing reply on 2026-04-27 acknowledged "what you're describing is a bigger move than what I built, and I think it's the right long-term direction" and agreed B2 ships as-is while the facade discussion goes into a Track-B follow-up (status: in @jezdez's court to write up the follow-up issue). No changes requested on the B2 PR itself. **B8 [#15974](https://github.com/conda/conda/pull/15974)** — @dholth issue-comment on the GIL/`zstd`-vs-`bz2` interaction with [a sub-interpreter prototype](https://github.com/dholth/conda/commit/857a0447baf6f1f8709d5ccf7dec159e391b9cf3) showing 3–6 productive `.conda` unpack processes on M1, suggesting `ProcessPoolExecutor` as a follow-up direction. Out of scope for the 1-LOC `EXTRACT_THREADS = 2` cap; will be linked from the B-track follow-up issue. **B13 cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173)** — @dholth "Good idea." informal +1, no formal review. **B20 [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175)** — @dholth `COMMENTED` review with 4 inline comments (Windows tar pathsep `/` vs `\` round-trip, `join`/`normpath` don't syscall, the space-as-digit-separator nit, whether to verify `dest_dir` doesn't already exist before taking the fast path) plus two issue-level design questions (better use of stdlib `tarfile` builtins linking conda/conda-package-streaming#107, and a symlink-replay strategy for well-behaved packages). The 4 inline nits are mechanical cleanups; the two design questions are scope expansions that go beyond B20's hybrid-fast/fallback patch — status: in @jezdez's court to address the inline nits, then reply to the design questions framing them as B-track follow-ups (or a B20-prime if direction shifts). **No code changes pushed in this sweep; no measurements re-run, so [Executive Summary](#executive-summary) tables and "Last refreshed" date stay at 2026-04-24.** |
 | 2026-04-24 | **Draft PR #15980 opened for the optional PrefixGraph-rattler fast path.** After W5 confirmed the 29.5× speedup on realistic large-prefix installs ([jezdez@dde7a2ed2](https://github.com/conda/conda/commit/dde7a2ed2) range), the S18c experiment branch was opened as a draft PR on conda/conda, stacked on [#15971](https://github.com/conda/conda/pull/15971). PR body explains the dep story options (optional `try: import rattler`, `conda[fast]` extra, or hard dep) and the open questions before leaving draft (grammar compatibility sweep, CI dual-path test, py-rattler version pin). Explicit "do not merge before #15971 lands" note in the body since this PR's fallback is the B2 name-indexed loop from #15971. |
