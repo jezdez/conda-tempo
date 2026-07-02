@@ -13,6 +13,9 @@
 #   pixi run all                    # everything in order (~90 min)
 #
 # Cross-platform:
+#   pixi run windows-phase1        # run the Windows-native Phase 1 harness
+#   pixi run windows-phase2        # run Windows Phase 2 pyperf sweeps
+#   pixi run windows-phase4        # rerun W1/W2/W3/W4 + W3 50k on Windows
 #   pixi run linux-build            # build the Docker image
 #   pixi run linux-all              # run the full suite in the Linux
 #                                   # container (writes data/phase{1,2}_linux/)
@@ -24,13 +27,13 @@ name = "conda-tempo"
 description = "Measuring and reducing conda's tempo — Track B benchmark harness."
 authors = ["Jannis Leidel <jezdez@anaconda.com>"]
 channels = ["conda-forge"]
-platforms = ["osx-arm64", "linux-aarch64", "linux-64"]
+platforms = ["osx-arm64", "linux-aarch64", "linux-64", "win-64"]
 
 # Put bench/tools on PATH first so the `conda` shim wins over the
 # pip-installed `conda` console script (which has a pip-install guard
 # that aborts for every subcommand except init/info). See
 # bench/tools/conda for the rationale.
-[activation.env]
+[target.unix.activation.env]
 PATH = "$PIXI_PROJECT_ROOT/bench/tools:$PATH"
 
 # Runtime deps for conda + cph + cps come from conda-forge (they have
@@ -74,9 +77,7 @@ libmambapy = "*"
 
 # Benchmarking toolchain.
 hyperfine = "*"
-memray = "*"
 pyperf = "*"
-scalene = "*"
 
 # Build deps for the editable pip installs that follow.
 pip = "*"
@@ -84,6 +85,10 @@ hatchling = "*"
 "hatch-vcs" = "*"
 "flit-core" = "*"
 cython = "*"
+
+[target.unix.dependencies]
+memray = "*"
+scalene = "*"
 
 [pypi-dependencies]
 # Path-editable installs from the sibling workspace checkouts. With
@@ -172,6 +177,10 @@ cmd = "python bench/phase2/run_pyperf.py s8_extract_pool --sizes 5 --mode fast"
 description = "S9: pyc batching per-pkg vs all-in-one — pyperf fast"
 cmd = "python bench/phase2/run_pyperf.py s9_pyc_batching --sizes 10 30 60 --mode fast"
 
+[tasks.phase2-s10]
+description = "S10: CreatePrefixRecordAction conda-meta JSON writes — pyperf full"
+cmd = "python bench/phase2/run_pyperf.py s10_prefix_record_writes --sizes 15 150 1000 5000 --mode full"
+
 [tasks.phase2-s11]
 description = "S11: SolverInputState.installed per-access — pyperf full"
 cmd = "python bench/phase2/run_pyperf.py s11_libmamba_installed --sizes 1000 5000 10000 --mode full"
@@ -180,7 +189,7 @@ cmd = "python bench/phase2/run_pyperf.py s11_libmamba_installed --sizes 1000 500
 description = "All Phase-2 pyperf sweeps in sequence (~90 min)"
 depends-on = [
     "phase2-s2", "phase2-s6", "phase2-s7",
-    "phase2-s8", "phase2-s9", "phase2-s11",
+    "phase2-s8", "phase2-s9", "phase2-s10", "phase2-s11",
 ]
 
 # ── Phase 2 memray per suspect ────────────────────────────────────
@@ -195,6 +204,8 @@ cmd = "python bench/phase2/run_memray.py s7_link_parallel -n 1000"
 cmd = "python bench/phase2/run_memray.py s8_extract_pool -n 5"
 [tasks.phase2-memray-s9]
 cmd = "python bench/phase2/run_memray.py s9_pyc_batching -n 30"
+[tasks.phase2-memray-s10]
+cmd = "python bench/phase2/run_memray.py s10_prefix_record_writes -n 150"
 [tasks.phase2-memray-s11]
 cmd = "python bench/phase2/run_memray.py s11_libmamba_installed -n 5000"
 
@@ -202,7 +213,7 @@ cmd = "python bench/phase2/run_memray.py s11_libmamba_installed -n 5000"
 description = "Phase-2 memray for every confirmed suspect"
 depends-on = [
     "phase2-memray-s2", "phase2-memray-s6", "phase2-memray-s7",
-    "phase2-memray-s8", "phase2-memray-s9", "phase2-memray-s11",
+    "phase2-memray-s8", "phase2-memray-s9", "phase2-memray-s10", "phase2-memray-s11",
 ]
 
 # ── Phase 2 composite ────────────────────────────────────────────
@@ -216,6 +227,57 @@ depends-on = ["phase2-pyperf", "phase2-memray"]
 [tasks.all]
 description = "Full Phase 1 + Phase 2 for the current platform (~90 min on macOS)"
 depends-on = ["phase1", "phase1-profile", "phase2"]
+
+# ── Windows-native harness ───────────────────────────────────────
+# These tasks avoid Bash, POSIX paths, and hyperfine prepare/cleanup hooks.
+
+[target.win.tasks.windows-w1]
+description = "Windows W1: fresh install of python + requests"
+cmd = "python bench/run_windows.py w1"
+
+[target.win.tasks.windows-w2]
+description = "Windows W2: fresh data-science install"
+cmd = "python bench/run_windows.py w2"
+
+[target.win.tasks.windows-w3]
+description = "Windows W3: synthetic-prefix --dry-run install"
+cmd = "python bench/run_windows.py w3"
+
+[target.win.tasks.windows-w3-50k]
+description = "Windows W3: synthetic-prefix --dry-run install with 50k records"
+cmd = "python bench/run_windows.py w3-50k --phase phase4_windows"
+
+[target.win.tasks.windows-w3-strategy]
+description = "Windows W3: bounded single-pass large-prefix probes"
+cmd = "python bench/run_windows.py w3-strategy --phase phase4_windows"
+
+[target.win.tasks.windows-w4]
+description = "Windows W4: cold-cache data-science install"
+cmd = "python bench/run_windows.py w4 --phase phase4_windows"
+
+[target.win.tasks.windows-phase1]
+description = "Windows Phase 1: W1/W2/W3"
+cmd = "python bench/run_windows.py phase1"
+
+[target.win.tasks.windows-phase1-profile]
+description = "Windows Phase 1 profile passes: cProfile + time_recorder"
+cmd = "python bench/run_windows.py phase1-profile"
+
+[target.win.tasks.windows-phase2]
+description = "Windows Phase 2: pyperf sweeps, including S10"
+cmd = "python bench/run_windows.py phase2"
+
+[target.win.tasks.windows-phase2-fast]
+description = "Windows Phase 2 smoke sweep with pyperf --fast"
+cmd = "python bench/run_windows.py phase2 --phase2-mode fast"
+
+[target.win.tasks.windows-phase4]
+description = "Windows Phase 4: W1/W2/W3/W4 plus W3 50k"
+cmd = "python bench/run_windows.py phase4"
+
+[target.win.tasks.windows-all]
+description = "Windows full run: Phase 1 + profile + Phase 2"
+cmd = "python bench/run_windows.py all"
 
 # ── Linux-in-a-box (Docker / OrbStack) ────────────────────────────
 # These wrap the docker/ flow. They run on macOS to drive a Linux

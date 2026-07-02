@@ -1,0 +1,28 @@
+         67106873 function calls (61879244 primitive calls) in 119.414 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5995 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000  107.773  107.773 C:\Users\janni\Code\conda\conda\notices\core.py:112(wrapper)
+        1    0.010    0.010  107.763  107.763 C:\Users\janni\Code\conda\conda\cli\main_create.py:110(execute)
+        1    0.000    0.000  107.753  107.753 C:\Users\janni\Code\conda\conda\cli\install.py:289(install)
+47508/31779    0.183    0.000  105.163    0.003 C:\Users\janni\Code\conda-package-streaming\conda_package_streaming\extract.py:41(checked_members)
+    24/13    0.000    0.000  105.006    8.077 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:1059(join)
+    24/13    0.001    0.000  105.006    8.077 {method 'join' of '_thread._ThreadHandle' objects}
+        4    0.000    0.000  104.931   26.233 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\concurrent\futures\_base.py:652(__exit__)
+        4    0.000    0.000  104.931   26.233 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\concurrent\futures\thread.py:220(shutdown)
+        1    0.000    0.000   96.329   96.329 C:\Users\janni\Code\conda\conda\cli\install.py:544(handle_txn)
+47071/38932    0.194    0.000   55.589    0.001 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\tarfile.py:2774(utime)
+47071/5992    0.216    0.000   54.724    0.009 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\tarfile.py:2482(_extract_one)
+     24/4    0.000    0.000   54.619   13.655 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:1001(_bootstrap)
+     24/4    0.001    0.000   54.619   13.655 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:1028(_bootstrap_inner)
+     24/4    0.000    0.000   54.619   13.655 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:984(run)
+ 1432/206    0.015    0.000   54.599    0.265 {method 'get' of '_queue.SimpleQueue' objects}
+     20/3    0.000    0.000   54.538   18.179 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\concurrent\futures\thread.py:70(_worker)
+   1088/4    0.014    0.000   54.530   13.632 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\concurrent\futures\thread.py:54(run)
+47071/5992    0.334    0.000   52.558    0.009 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\tarfile.py:2553(_extract_member)
+374051/309375    0.412    0.000   52.025    0.000 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\tarfile.py:524(read)
+47218/39079    6.201    0.000   50.780    0.001 {built-in method nt.utime}
+
+

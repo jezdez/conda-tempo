@@ -1,0 +1,9 @@
+{
+  "conda_version": "26.5.4.dev81",
+  "date": "2026-07-01T15:23:07Z",
+  "failures": [],
+  "phase": "phase4_windows",
+  "pkgs_dir": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\pkgs",
+  "records": null,
+  "runner": "bench/run_windows.py"
+}

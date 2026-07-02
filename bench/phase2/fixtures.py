@@ -21,6 +21,8 @@ All builders are idempotent and cheap to rerun.
 from __future__ import annotations
 
 import os
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,6 +33,21 @@ from seed_big_prefix import seed  # noqa: E402
 
 
 PLACEHOLDER = "/opt/anaconda1anaconda2anaconda3"
+
+
+def conda_cmd(*args: str) -> list[str]:
+    """Return the conda command used by fixtures that shell out.
+
+    Windows pixi environments can expose a ``conda.exe`` console script that
+    trips conda's initialization guard. The module entry point is stable there,
+    while ``CONDA_BENCH_CONDA`` keeps command overrides available for ad-hoc
+    runs.
+    """
+
+    override = os.environ.get("CONDA_BENCH_CONDA")
+    if override:
+        return [*shlex.split(override), *args]
+    return [sys.executable, "-m", "conda", *args]
 
 
 def synthetic_prefix(n: int, *, tmpdir: Path) -> Path:
@@ -484,16 +501,18 @@ def conda_packages_from_cache(
     has no eligible .conda files.
     """
     import json
-    import subprocess
 
-    try:
-        out = subprocess.check_output(
-            ["conda", "config", "--show", "pkgs_dirs", "--json"],
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return []
-    pkgs_dirs = json.loads(out).get("pkgs_dirs") or []
+    if cache_dirs := os.environ.get("CONDA_BENCH_PKGS_DIRS"):
+        pkgs_dirs = [p for p in cache_dirs.split(os.pathsep) if p]
+    else:
+        try:
+            out = subprocess.check_output(
+                conda_cmd("config", "--show", "pkgs_dirs", "--json"),
+                text=True,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            return []
+        pkgs_dirs = json.loads(out).get("pkgs_dirs") or []
 
     candidates = []
     for pdir in pkgs_dirs:

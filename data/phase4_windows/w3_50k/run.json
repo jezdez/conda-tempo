@@ -1,0 +1,17 @@
+{
+  "command": "python -m conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata",
+  "conda_version": "26.5.4.dev81",
+  "date": "2026-07-01T15:23:34Z",
+  "phase": "phase4_windows",
+  "records": 50000,
+  "result": "timeout",
+  "runner": "manual direct dry-run after bench_big was seeded to 50000 records",
+  "stack": {
+    "conda": "main ca9e1b0ee",
+    "conda-libmamba-solver": "track-b-b11-cache-installed c7977ae",
+    "conda-package-handling": "track-b-b13-reuse-zipfile c3b0afe",
+    "conda-package-streaming": "track-b-b20-safety-fast-path ec20ed7"
+  },
+  "timeout_s": 1800,
+  "workload": "w3_50k"
+}

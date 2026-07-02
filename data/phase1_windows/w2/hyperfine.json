@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "command": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\python.exe -m conda create -n bench_w2 -c conda-forge -y python=3.13 pandas scikit-learn matplotlib jupyter",
+      "mean": 43.472195260005535,
+      "stddev": 0.17216172639689956,
+      "median": 43.459686099988176,
+      "min": 43.1751409000135,
+      "max": 43.6738897000032,
+      "times": [
+        43.444576100009726,
+        43.60768350001308,
+        43.459686099988176,
+        43.6738897000032,
+        43.1751409000135
+      ]
+    }
+  ]
+}

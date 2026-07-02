@@ -1,0 +1,37 @@
+{
+  "command": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\python.exe -m conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata",
+  "conda_version": "26.3.3.dev57",
+  "date": "2026-07-01T21:56:22Z",
+  "phase": "phase4_windows",
+  "results": [
+    {
+      "elapsed_seconds": 55.08116390000214,
+      "fixture_shape": "simple-deps",
+      "records": 50000,
+      "returncode": 0,
+      "status": "ok",
+      "stderr_tail": "\nDryRunExit: Dry run. Exiting.\n\n",
+      "stdout_tail": "Channels:\n - conda-forge\nPlatform: win-64\nCollecting package metadata (repodata.json): - \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\bdone\nSolving environment: - \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\bdone\n\n## Package Plan ##\n\n  environment location: C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\envs\\bench_big\n\n  added / updated specs:\n    - tzdata\n\n\nThe following NEW packages will be INSTALLED:\n\n  tzdata             conda-forge/noarch::tzdata-2025c-hc9c84f9_1 \n\n\n",
+      "timeout_seconds": 1800
+    }
+  ],
+  "runner": "bench/run_windows.py w3-strategy",
+  "stack": {
+    "conda": {
+      "branch": "jezdez/track-b-b2-prefix-graph-by-name",
+      "head": "d0aecb759"
+    },
+    "conda-libmamba-solver": {
+      "branch": "track-b-b11-cache-installed",
+      "head": "c7977ae"
+    },
+    "conda-package-handling": {
+      "branch": "track-b-b13-reuse-zipfile",
+      "head": "c3b0afe"
+    },
+    "conda-package-streaming": {
+      "branch": "track-b-b20-safety-fast-path",
+      "head": "ec20ed7"
+    }
+  }
+}

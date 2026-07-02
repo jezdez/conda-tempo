@@ -1,0 +1,28 @@
+         42027192 function calls (38229653 primitive calls) in 68.589 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5410 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   62.802   62.802 C:\Users\janni\Code\conda\conda\notices\core.py:112(wrapper)
+        1    0.008    0.008   62.792   62.792 C:\Users\janni\Code\conda\conda\cli\main_create.py:110(execute)
+        1    0.000    0.000   62.784   62.784 C:\Users\janni\Code\conda\conda\cli\install.py:289(install)
+        1    0.000    0.000   54.063   54.063 C:\Users\janni\Code\conda\conda\cli\install.py:544(handle_txn)
+        1    0.000    0.000   53.672   53.672 C:\Users\janni\Code\conda\conda\core\link.py:365(execute)
+      242    0.003    0.000   48.975    0.202 C:\Users\janni\Code\conda\conda\common\io.py:520(map)
+        1    0.013    0.013   34.290   34.290 C:\Users\janni\Code\conda\conda\core\link.py:916(_execute)
+      689    0.047    0.000   34.169    0.050 C:\Users\janni\Code\conda\conda\core\link.py:1095(_execute_actions)
+     45/9    0.004    0.000   31.102    3.456 C:\Users\janni\Code\conda\conda\common\io.py:117(decorated)
+    45733    0.196    0.000   28.447    0.001 C:\Users\janni\Code\conda\conda\core\path_actions.py:517(execute)
+    46227    0.207    0.000   27.917    0.001 C:\Users\janni\Code\conda\conda\gateways\disk\create.py:349(create_link)
+        1    0.000    0.000   19.330   19.330 C:\Users\janni\Code\conda\conda\core\link.py:310(verify)
+    43056   18.355    0.000   18.355    0.000 C:\Users\janni\Code\conda\conda\gateways\disk\link.py:63(win_hard_link)
+        1    0.000    0.000   15.191   15.191 C:\Users\janni\Code\conda\conda\core\link.py:893(_verify)
+        1    0.046    0.046   13.656   13.656 C:\Users\janni\Code\conda\conda\core\link.py:621(_verify_individual_level)
+    45866    0.389    0.000   12.863    0.000 C:\Users\janni\Code\conda\conda\core\path_actions.py:420(verify)
+179609/179608    9.769    0.000    9.775    0.000 {built-in method nt._path_lexists}
+        1    0.000    0.000    8.720    8.720 C:\Users\janni\Code\conda\conda\core\solve.py:116(solve_for_transaction)
+        1    0.002    0.002    8.718    8.718 C:\Users\janni\Code\conda\conda\core\solve.py:195(solve_for_diff)
+        1    0.000    0.000    8.714    8.714 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\solver.py:138(solve_final_state)
+
+

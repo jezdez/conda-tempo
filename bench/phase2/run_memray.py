@@ -33,7 +33,7 @@ import memray
 from memray import FileReader, FileFormat
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA = REPO_ROOT / "data" / "phase2"
+DEFAULT_PHASE = "phase2"
 
 
 def _dump_meta(bin_path: Path, meta_path: Path) -> None:
@@ -58,6 +58,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("suspect_id")
     ap.add_argument("-n", "--records", type=int, default=5000)
+    ap.add_argument(
+        "--phase",
+        default=DEFAULT_PHASE,
+        help="output dir under data/ (default: phase2)",
+    )
     ns = ap.parse_args()
 
     # Ensure sibling bench_* modules import cleanly.
@@ -74,7 +79,7 @@ def main() -> int:
             f"error: {module_name} must define register_memray(n: int) -> None",
         )
 
-    out_dir = DATA / ns.suspect_id
+    out_dir = REPO_ROOT / "data" / ns.phase / ns.suspect_id
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = f"memray_n{ns.records}"
     bin_path = out_dir / f"{stem}.bin"

@@ -1,0 +1,14 @@
+{
+  "host": "Intel(R) Client Systems NUC11BTMi7; 11th Gen Intel(R) Core(TM) i7-11700B @ 3.20GHz, 8 cores / 16 logical processors, 63.6 GiB RAM",
+  "os": "Microsoft Windows 11 Pro 10.0.26200 build 26200",
+  "architecture": "x86_64 / AMD64",
+  "fs": "NTFS on local NVMe SSD, C: fixed volume",
+  "disk": "Samsung SSD 990 PRO 2TB (C:, NVMe, GPT); secondary Samsung 980 PRO with Heatsink 2TB present",
+  "power_profile": "High performance, plugged in",
+  "defender_or_av": "Microsoft Defender reports AMServiceEnabled=false, AntivirusEnabled=false, RealTimeProtectionEnabled=false",
+  "conda_version": "26.5.4.dev81",
+  "python_version": "3.13.14",
+  "pixi_version": "0.71.2",
+  "date": "2026-07-01",
+  "notes": "Dedicated win-64/x86_64 host. Workspace and Pixi package cache are on C:. Final Phase 4 rerun used conda main ca9e1b0ee, conda-libmamba-solver track-b-b11-cache-installed c7977ae, conda-package-handling track-b-b13-reuse-zipfile c3b0afe, conda-package-streaming track-b-b20-safety-fast-path ec20ed7, and libmambapy 2.8.1."
+}

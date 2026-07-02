@@ -1,0 +1,28 @@
+         1143879067 function calls (1143808266 primitive calls) in 442.315 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5396 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000  432.890  432.890 C:\Users\janni\Code\conda\conda\notices\core.py:112(wrapper)
+        1    0.000    0.000  432.878  432.878 C:\Users\janni\Code\conda\conda\cli\main_install.py:122(execute)
+        1    0.000    0.000  432.878  432.878 C:\Users\janni\Code\conda\conda\cli\install.py:289(install)
+        1    0.000    0.000  432.173  432.173 C:\Users\janni\Code\conda\conda\core\solve.py:116(solve_for_transaction)
+        1    0.001    0.001  432.172  432.172 C:\Users\janni\Code\conda\conda\core\solve.py:195(solve_for_diff)
+        2   19.392    9.696  425.795  212.897 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:46(__init__)
+ 50035117   32.072    0.000  393.591    0.000 {built-in method builtins.any}
+149510780   32.636    0.000  361.513    0.000 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:60(<genexpr>)
+ 99515781   72.052    0.000  328.925    0.000 C:\Users\janni\Code\conda\conda\models\match_spec.py:377(match)
+ 99523889   41.222    0.000  227.175    0.000 C:\Users\janni\Code\conda\conda\models\match_spec.py:396(_match_individual)
+        1    0.000    0.000  220.418  220.418 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\solver.py:134(solve_final_state)
+        1    0.001    0.001  214.093  214.093 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\state.py:493(current_solution)
+        1    0.003    0.003  211.751  211.751 C:\Users\janni\Code\conda\conda\core\solve.py:1416(diff_for_unlink_link_precs)
+99788727/99788712   27.703    0.000   99.872    0.000 {built-in method builtins.getattr}
+ 99515781   86.107    0.000   86.107    0.000 C:\Users\janni\Code\conda\conda\models\match_spec.py:1383(match)
+ 99818121   56.625    0.000   72.359    0.000 C:\Users\janni\Code\conda\conda\auxlib\entity.py:413(__get__)
+ 99583547   15.543    0.000   15.543    0.000 {method 'items' of 'dict' objects}
+100070072/100070059   14.302    0.000   14.356    0.000 {built-in method builtins.isinstance}
+      5/4    0.000    0.000   13.968    3.492 C:\Users\janni\Code\conda\conda\common\io.py:117(decorated)
+107898/105452    0.039    0.000   12.175    0.000 {built-in method builtins.next}
+
+

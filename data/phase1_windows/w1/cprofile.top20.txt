@@ -1,0 +1,28 @@
+         5770214 function calls (5219878 primitive calls) in 12.213 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5769 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    9.993    9.993 C:\Users\janni\Code\conda\conda\notices\core.py:112(wrapper)
+        1    0.001    0.001    9.984    9.984 C:\Users\janni\Code\conda\conda\cli\main_create.py:110(execute)
+        1    0.000    0.000    9.983    9.983 C:\Users\janni\Code\conda\conda\cli\install.py:289(install)
+     42/9    0.000    0.000    7.792    0.866 C:\Users\janni\Code\conda\conda\common\io.py:117(decorated)
+        1    0.000    0.000    7.649    7.649 C:\Users\janni\Code\conda\conda\cli\install.py:544(handle_txn)
+        1    0.000    0.000    7.045    7.045 C:\Users\janni\Code\conda\conda\core\link.py:365(execute)
+       45    0.000    0.000    6.112    0.136 C:\Users\janni\Code\conda\conda\common\io.py:520(map)
+        1    0.002    0.002    4.090    4.090 C:\Users\janni\Code\conda\conda\core\link.py:916(_execute)
+       98    0.006    0.000    4.072    0.042 C:\Users\janni\Code\conda\conda\core\link.py:1095(_execute_actions)
+     4933    0.025    0.000    3.223    0.001 C:\Users\janni\Code\conda\conda\gateways\disk\create.py:349(create_link)
+     4878    0.024    0.000    3.212    0.001 C:\Users\janni\Code\conda\conda\core\path_actions.py:517(execute)
+        1    0.000    0.000    2.933    2.933 C:\Users\janni\Code\conda\conda\core\link.py:310(verify)
+        1    0.000    0.000    2.423    2.423 C:\Users\janni\Code\conda\conda\core\link.py:893(_verify)
+        1    0.000    0.000    2.334    2.334 C:\Users\janni\Code\conda\conda\core\solve.py:116(solve_for_transaction)
+        1    0.001    0.001    2.334    2.334 C:\Users\janni\Code\conda\conda\core\solve.py:195(solve_for_diff)
+        1    0.000    0.000    2.331    2.331 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\solver.py:138(solve_final_state)
+     4663    2.061    0.000    2.061    0.000 C:\Users\janni\Code\conda\conda\gateways\disk\link.py:63(win_hard_link)
+        1    0.000    0.000    1.960    1.960 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\solver.py:262(_collect_all_metadata)
+        1    0.006    0.006    1.900    1.900 C:\Users\janni\Code\conda\conda\core\link.py:621(_verify_individual_level)
+     4890    0.052    0.000    1.642    0.000 C:\Users\janni\Code\conda\conda\core\path_actions.py:420(verify)
+
+
