@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint plus W3 topological-sort probe recorded; nine tracked PRs ready for review, one merged, one draft, one research PR closed |
+| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint plus W3 topological-sort probe recorded; ten tracked PRs ready for review, one merged, one draft stacked on #15971, one research PR closed |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -32,7 +32,7 @@
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
 > 2026-07-02 (PR readiness sweep, B15 close-out, and Windows W3
-> topological-sort probe; headline macOS/Linux numbers unchanged
+> topological-sort PR #16331; headline macOS/Linux numbers unchanged
 > since the 2026-04-24 stacked runs)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
@@ -100,7 +100,7 @@ Broken out by workload type — the stack is not uniform across them:
 
 ### What shipped
 
-Five fixes in `conda`, one in `conda-libmamba-solver`, three in
+Six fixes in `conda`, one in `conda-libmamba-solver`, three in
 `conda-package-streaming`, one in `conda-package-handling`, plus
 dropped, superseded, or research-only branches after measurement:
 
@@ -108,6 +108,7 @@ dropped, superseded, or research-only branches after measurement:
 |---|---|---|---|---|
 | B1 | conda | Quadratic diff sort | 782× at N=50 000 | [conda/conda#15970](https://github.com/conda/conda/pull/15970) ready for review |
 | B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | [conda/conda#15971](https://github.com/conda/conda/pull/15971) ready for review |
+| B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k: 574.61 s → 53.05 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) draft stacked on #15971 |
 | B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB | [conda/conda#15972](https://github.com/conda/conda/pull/15972) ready for review |
 | B6 | conda | Opt-in parallel `_verify_individual_level` | 1.26× at K=2 | [conda/conda#15973](https://github.com/conda/conda/pull/15973) ready for review (opt-in) |
 | B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
@@ -176,36 +177,38 @@ bottleneck directly observable rather than speculative:
   W3 profile spent **52.3 s cumulative in `PrefixGraph.__init__`**,
   almost all of it in `_toposort()`, and a local child-adjacency
   toposort prototype cut Windows W3 realistic 50k from **574.61 s**
-  to **33.23 s**. Future rattler work should be a wider first-class
-  record/spec architecture question, not a narrow optional fast path
-  inside `PrefixGraph.__init__`.
+  to **33.23 s**. The production conda PR [#16331](https://github.com/conda/conda/pull/16331)
+  adds the cycle-handling safeguards and measured **53.05 s** at
+  50k on the same Windows strategy run. Future rattler work should be
+  a wider first-class record/spec architecture question, not a narrow
+  optional fast path inside `PrefixGraph.__init__`.
 - **Windows is now partially measured, not final-stack validated.**
   The 2026-07-01 dedicated win-64/x86_64 checkpoint includes Phase 1,
   full Phase 2, S10, and B2+B11 W3 50k strategy runs, including the
-  2026-07-02 topological-sort probe, but it is not a like-for-like
-  replacement for the April macOS/Linux full-stack table. `menuinst`'s
-  per-shortcut NTFS/AV cost remains a known gap.
+  2026-07-02 topological-sort probe and PR branch confirmation, but it
+  is not a like-for-like replacement for the April macOS/Linux
+  full-stack table. `menuinst`'s per-shortcut NTFS/AV cost remains a
+  known gap.
 
 ### Next steps
 
 As of 2026-07-02, the tracked PR state is: B13 (cps) merged;
-B1, B2, B4, B6, B8, B11, B13 (cph), B14, and B20 ready for review;
-B9c remains draft pending manual macOS verification; and B15 is
+B1, B2, B4, B6, B8, B9c, B11, B13 (cph), B14, and B20 ready for
+review; B21 is draft because it is stacked on B2/#15971; and B15 is
 closed as a research-only branch because its optional-rattler shim is
 not the right maintenance shape. The nearest-term work is:
 
-1. Turn the Windows W3 topological-sort prototype into a production
-   conda PR after adding cycle-handling and ordering tests.
-2. Finish the B9c manual macOS verification note, then move it from
-   draft to ready-for-review.
-3. Get Windows CI on the branches that touch `gateways/disk/*`
+1. Keep B21 [#16331](https://github.com/conda/conda/pull/16331) draft
+   until B2 [#15971](https://github.com/conda/conda/pull/15971)
+   lands, then rebase/retarget and move it to review.
+2. Get Windows CI on the branches that touch `gateways/disk/*`
    (B6, B8, B9c) and verify menuinst-adjacent paths. Windows now has
    dedicated x86_64 harness data, but not CI coverage or antivirus-on
    transaction profiles.
-4. Add Linux x86_64 numbers to complement the arm64 ones; all
+3. Add Linux x86_64 numbers to complement the arm64 ones; all
    CI and most prod installs are x86_64 and syscall costs are
    not perfectly identical to arm64.
-5. Rerun the Windows W3/W4 stack once the exact April stack branches
+4. Rerun the Windows W3/W4 stack once the exact April stack branches
    are available, or build an equivalent local stack branch, so the
    Windows checkpoint can be compared like-for-like with macOS/Linux.
 
@@ -1811,6 +1814,20 @@ to **1.3 s** cumulative and `dict.pop()` falls from **87.0 M** calls to
 is libmamba metadata/index setup, `History.get_requested_specs_map()`,
 and `PrefixData.load()`.
 
+Production PR [conda/conda#16331](https://github.com/conda/conda/pull/16331)
+keeps the child-adjacency strategy but preserves the live graph mutation
+that `_topo_sort_handle_cycles()` relies on. With #16331 commit
+`ea7a30aa2`, the same Windows strategy produced:
+
+| Probe | B2+B11 | B2+B11 + #16331 |
+|---|---:|---:|
+| W3 realistic, 5k records | 9.25 s | 6.43 s |
+| W3 realistic, 10k records | 27.64 s | 11.57 s |
+| W3 realistic, 50k records | 574.61 s | 53.05 s |
+
+Raw data:
+[`data/phase4_windows_toposort_pr/w3_strategy/realistic.json`](data/phase4_windows_toposort_pr/w3_strategy/realistic.json).
+
 Remaining headroom (measured, not inferred — `time_recorder` and
 `tottime` cProfile data for the stacked runs is in
 [`data/phase4/`](data/phase4/) and
@@ -1909,6 +1926,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-07-02 | **B21 draft PR opened for pure-Python `PrefixGraph` topological sort.** Opened [conda/conda#16331](https://github.com/conda/conda/pull/16331), stacked on B2 [#15971](https://github.com/conda/conda/pull/15971). The production patch keeps the child-adjacency strategy from the Windows W3 prototype but continues mutating the working graph as nodes are yielded, so the existing cycle-recovery path sees the same remaining graph shape. Public-path tests cover disconnected-node ordering and cycle recovery after acyclic nodes are removed; full `tests/models/test_prefix_graph.py` passed locally on Windows. The post-commit Windows W3 strategy confirmation measured realistic 5k **6.43 s**, 10k **11.57 s**, and 50k **53.05 s** versus the B2+B11 checkpoint's 9.25 s / 27.64 s / 574.61 s. |
 | 2026-07-02 | **Windows W3 topological-sort probe.** Re-ran the Windows W3 realistic strategy on the dedicated win-64 host with B2+B11 aligned, then profiled the 10k path. The profile showed the remaining B2+B11 Windows W3 cost was `PrefixGraph._toposort()`, not primarily `MatchSpec`: `PrefixGraph.__init__` took **52.3 s** cumulative, `_toposort()` **51.0 s**, and `dict.pop()` was called **87.0 M** times. A local child-adjacency Kahn-pass prototype, captured as [`data/phase4_windows_toposort_probe/prefix_graph_toposort_prototype.patch`](data/phase4_windows_toposort_probe/prefix_graph_toposort_prototype.patch), measured W3 realistic at 5k **5.63 s**, 10k **9.54 s**, and 50k **33.23 s** versus the previous B2+B11 strategy's 9.25 s / 27.64 s / 574.61 s. This is a promising pure-Python follow-up, but not production-ready until cycle-handling and ordering tests are added. |
 | 2026-07-02 | **B15 closed as research-only.** Closed [conda/conda#15980](https://github.com/conda/conda/pull/15980) rather than moving it toward review. The W5/S19 measurements remain useful: rattler-backed `PrefixGraph` construction can be dramatically faster for truly large prefixes. The PR shape is not shippable, though, because it makes py-rattler a quasi-optional dependency inside conda, adds conda-record → rattler-record mapping, requires fallback behavior for grammar mismatches, and would need dual-path tests for graph ordering, cycles, noarch/Windows behavior, and activation thresholds. Keep B2 [#15971](https://github.com/conda/conda/pull/15971) as the Track B `PrefixGraph` implementation; treat future rattler work as a wider first-class record/spec architecture question, not an optional shim in `PrefixGraph.__init__`. No measurements changed. |
 | 2026-07-02 | **PR readiness sweep.** Marked the unconditional green drafts ready for review: B2 [conda/conda#15971](https://github.com/conda/conda/pull/15971), B4 [#15972](https://github.com/conda/conda/pull/15972), B6 [#15973](https://github.com/conda/conda/pull/15973), B8 [#15974](https://github.com/conda/conda/pull/15974), and B11 [conda/conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921). Live status is now: B13 cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) merged; B1, B2, B4, B6, B8, B11, B13 cph [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318), B14 [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), and B20 [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review; B9c [#15975](https://github.com/conda/conda/pull/15975) remains draft because its PR body still lists explicit pre-review work; B15 [#15980](https://github.com/conda/conda/pull/15980) was subsequently closed as research-only (see above). B13 cph is now green after the cps-side change landed and the runtime requirement was bumped. Tracking ticket [conda/conda#15969](https://github.com/conda/conda/issues/15969) refreshed to link to the canonical report summary and show the current PR states. No measurements changed, so the headline macOS/Linux numbers and Windows checkpoint data are unchanged. |

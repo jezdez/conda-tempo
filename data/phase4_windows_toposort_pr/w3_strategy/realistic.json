@@ -1,0 +1,57 @@
+{
+  "command": "C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\python.exe -m conda install -n bench_big -c conda-forge -y --dry-run --no-deps tzdata",
+  "conda_version": "26.3.3.dev57",
+  "date": "2026-07-02T14:37:53Z",
+  "phase": "phase4_windows_toposort_pr",
+  "results": [
+    {
+      "elapsed_seconds": 6.426821800007019,
+      "fixture_shape": "realistic",
+      "records": 5000,
+      "returncode": 0,
+      "status": "ok",
+      "stderr_tail": "\nDryRunExit: Dry run. Exiting.\n\n",
+      "stdout_tail": "Retrieving notices: - \b\b\\ \b\bdone\nChannels:\n - conda-forge\nPlatform: win-64\nCollecting package metadata (repodata.json): / \b\b- \b\bdone\nSolving environment: | \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\bdone\n\n## Package Plan ##\n\n  environment location: C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\envs\\bench_big\n\n  added / updated specs:\n    - tzdata\n\n\nThe following NEW packages will be INSTALLED:\n\n  tzdata             conda-forge/noarch::tzdata-2025c-hc9c84f9_1 \n\n\n",
+      "timeout_seconds": 900
+    },
+    {
+      "elapsed_seconds": 11.574280000000726,
+      "fixture_shape": "realistic",
+      "records": 10000,
+      "returncode": 0,
+      "status": "ok",
+      "stderr_tail": "\nDryRunExit: Dry run. Exiting.\n\n",
+      "stdout_tail": "Retrieving notices: - \b\b\\ \b\bdone\nChannels:\n - conda-forge\nPlatform: win-64\nCollecting package metadata (repodata.json): / \b\b- \b\b\\ \b\bdone\nSolving environment: / \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\bdone\n\n## Package Plan ##\n\n  environment location: C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\envs\\bench_big\n\n  added / updated specs:\n    - tzdata\n\n\nThe following NEW packages will be INSTALLED:\n\n  tzdata             conda-forge/noarch::tzdata-2025c-hc9c84f9_1 \n\n\n",
+      "timeout_seconds": 900
+    },
+    {
+      "elapsed_seconds": 53.04677309998078,
+      "fixture_shape": "realistic",
+      "records": 50000,
+      "returncode": 0,
+      "status": "ok",
+      "stderr_tail": "\nDryRunExit: Dry run. Exiting.\n\n",
+      "stdout_tail": "Retrieving notices: - \b\bdone\nChannels:\n - conda-forge\nPlatform: win-64\nCollecting package metadata (repodata.json): | \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\bdone\nSolving environment: \\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\b| \b\b/ \b\b- \b\b\\ \b\bdone\n\n## Package Plan ##\n\n  environment location: C:\\Users\\janni\\Code\\conda-tempo\\.pixi\\envs\\default\\envs\\bench_big\n\n  added / updated specs:\n    - tzdata\n\n\nThe following NEW packages will be INSTALLED:\n\n  tzdata             conda-forge/noarch::tzdata-2025c-hc9c84f9_1 \n\n\n",
+      "timeout_seconds": 900
+    }
+  ],
+  "runner": "bench/run_windows.py w3-strategy",
+  "stack": {
+    "conda": {
+      "branch": "jezdez/track-b-prefix-graph-toposort",
+      "head": "ea7a30aa2"
+    },
+    "conda-libmamba-solver": {
+      "branch": "track-b-b11-cache-installed",
+      "head": "c7977ae"
+    },
+    "conda-package-handling": {
+      "branch": "track-b-b13-reuse-zipfile",
+      "head": "c3b0afe"
+    },
+    "conda-package-streaming": {
+      "branch": "track-b-b20-safety-fast-path",
+      "head": "ec20ed7"
+    }
+  }
+}
