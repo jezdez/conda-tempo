@@ -1,0 +1,13 @@
+[before] data\phase4_windows\w3_b2b11_realistic_10k\cprofile.prof
+  PrefixGraph.__init__: calls=2 tottime=0.110s cumtime=52.308s
+  PrefixGraph._toposort: calls=2 tottime=0.027s cumtime=50.952s
+  PrefixGraph._topo_sort_handle_cycles: calls=22026 tottime=0.021s cumtime=50.830s
+  dict.pop: calls=86985757 tottime=25.107s cumtime=34.970s
+  PrefixGraph._toposort_raise_on_cycles: calls=20003 tottime=8.163s cumtime=26.204s
+
+[after] data\phase4_windows_toposort_probe\w3_b2b11_toposort_10k\cprofile.prof
+  PrefixGraph.__init__: calls=2 tottime=0.076s cumtime=1.325s
+  PrefixGraph._topo_sort_handle_cycles: calls=22026 tottime=0.024s cumtime=0.382s
+  PrefixGraph._toposort: calls=2 tottime=0.017s cumtime=0.286s
+  PrefixGraph._toposort_raise_on_cycles: calls=20003 tottime=0.091s cumtime=0.270s
+  dict.pop: calls=153364 tottime=0.047s cumtime=0.055s

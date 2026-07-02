@@ -1,0 +1,26 @@
+         181402840 function calls (181286886 primitive calls) in 66.766 seconds
+
+   Ordered by: cumulative time
+   List reduced from 5415 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   65.337   65.337 C:\Users\janni\Code\conda\conda\notices\core.py:112(wrapper)
+        1    0.000    0.000   65.324   65.324 C:\Users\janni\Code\conda\conda\cli\main_install.py:122(execute)
+        1    0.000    0.000   65.324   65.324 C:\Users\janni\Code\conda\conda\cli\install.py:271(install)
+        1    0.000    0.000   64.665   64.665 C:\Users\janni\Code\conda\conda\core\solve.py:116(solve_for_transaction)
+        1    0.002    0.002   64.664   64.664 C:\Users\janni\Code\conda\conda\core\solve.py:195(solve_for_diff)
+        2    0.110    0.055   52.308   26.154 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:46(__init__)
+202928/200504    0.068    0.000   51.674    0.000 {built-in method builtins.next}
+        2    0.027    0.014   50.952   25.476 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:214(_toposort)
+    22026    0.021    0.000   50.830    0.002 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:253(_topo_sort_handle_cycles)
+        3    0.000    0.000   48.385   16.128 C:\Users\janni\Code\conda\conda\plugins\reporter_backends\console.py:157(__exit__)
+        3    0.000    0.000   39.393   13.131 C:\Users\janni\Code\conda\conda\plugins\reporter_backends\console.py:133(stop)
+        1    0.000    0.000   39.218   39.218 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\solver.py:134(solve_final_state)
+        7    0.000    0.000   38.574    5.511 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:1059(join)
+        7    0.001    0.000   38.574    5.511 {method 'join' of '_thread._ThreadHandle' objects}
+      8/3    0.000    0.000   37.880   12.627 C:\Users\janni\Code\conda-tempo\.pixi\envs\default\Lib\threading.py:1001(_bootstrap)
+ 86985757   25.107    0.000   34.970    0.000 {method 'pop' of 'dict' objects}
+        1    0.002    0.002   27.892   27.892 C:\Users\janni\Code\conda-libmamba-solver\conda_libmamba_solver\state.py:493(current_solution)
+    20003    8.163    0.000   26.204    0.001 C:\Users\janni\Code\conda\conda\models\prefix_graph.py:227(_toposort_raise_on_cycles)
+        1    0.008    0.008   25.442   25.442 C:\Users\janni\Code\conda\conda\core\solve.py:1416(diff_for_unlink_link_precs)
+      255    6.179    0.024   21.256    0.083 {built-in method time.sleep}

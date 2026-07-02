@@ -1,0 +1,53 @@
+diff --git a/conda/models/prefix_graph.py b/conda/models/prefix_graph.py
+index 594c066e6..f04b3c125 100644
+--- a/conda/models/prefix_graph.py
++++ b/conda/models/prefix_graph.py
+@@ -232,9 +232,19 @@ class PrefixGraph:
+-        while True:
+-            no_parent_nodes = dict.fromkeys(
+-                sorted(
+-                    (node for node, parents in graph.items() if len(parents) == 0),
+-                    key=lambda x: x.name,
+-                )
+-            )
+-            if not no_parent_nodes:
+-                break
++        parents_by_node = {node: set(parents) for node, parents in graph.items()}
++        children_by_node = {node: [] for node in graph}
++        for node, parents in parents_by_node.items():
++            for parent in parents:
++                if parent in children_by_node:
++                    children_by_node[parent].append(node)
++
++        no_parent_nodes = sorted(
++            (node for node, parents in parents_by_node.items() if not parents),
++            key=lambda x: x.name,
++        )
++        while no_parent_nodes:
++            nodes = no_parent_nodes
++            no_parent_nodes = []
++
++            for node in nodes:
++                parents = parents_by_node.get(node)
++                if parents is None or parents:
++                    continue
+@@ -242,2 +251,0 @@ class PrefixGraph:
+-            for node in no_parent_nodes:
+-                yield node
+@@ -244,0 +253,11 @@ class PrefixGraph:
++                parents_by_node.pop(node, None)
++
++                for child in children_by_node.get(node, ()):
++                    child_parents = parents_by_node.get(child)
++                    if child_parents is None:
++                        continue
++                    child_parents.discard(node)
++                    if not child_parents:
++                        no_parent_nodes.append(child)
++
++                yield node
+@@ -246,3 +265 @@ class PrefixGraph:
+-            for parents in graph.values():
+-                for node in no_parent_nodes:
+-                    parents.pop(node, None)
++            no_parent_nodes.sort(key=lambda x: x.name)
