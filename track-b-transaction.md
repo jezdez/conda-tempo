@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint plus W3 topological-sort probe recorded; nine tracked PRs ready for review, two merged, one draft pending first green CI, one research PR closed |
+| **Status** | Phase 4 stacked profiles committed; W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline); W4 cold-cache mac −18 %, Linux −11 %; Windows x86_64 checkpoint plus W3 topological-sort probe recorded; PR tracking refreshed through B30 |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,9 +31,9 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-07-02 (PR readiness sweep, B15 close-out, and Windows W3
-> topological-sort PR #16331 custom rerun; B13 cph merged; headline
-> macOS/Linux numbers unchanged since the 2026-04-24 stacked runs)._
+> 2026-07-08 (PR tracking refresh through B30, preserving the
+> 2026-07-02 Windows W3 topological-sort rerun; headline macOS/Linux
+> numbers unchanged since the 2026-04-24 stacked runs)._
 
 **TL;DR: ~10–20 % faster on typical installs, 20–40× faster on
 commands against large existing prefixes.** The latter is the
@@ -98,11 +98,15 @@ Broken out by workload type — the stack is not uniform across them:
   per-member safety-check fast path does strictly fewer syscalls
   than both alternatives.
 
-### What shipped
+### Filed PRs and dispositions
 
 Six fixes in `conda`, one in `conda-libmamba-solver`, three in
 `conda-package-streaming`, one in `conda-package-handling`, plus
-dropped, superseded, or research-only branches after measurement:
+dropped, superseded, or research-only branches after measurement. The
+July 2026 follow-up also split the remaining install/link/copy-mode
+work into explicit Track B PRs B22-B30. Those newer PRs are tracked
+here as shipping status; they do not change the headline benchmark
+table unless called out in the notes.
 
 | ID | Repo | Fixes | Phase 2 signal | PR |
 |---|---|---|---|---|
@@ -123,9 +127,21 @@ dropped, superseded, or research-only branches after measurement:
 | B15 | conda | Optional py-rattler fast path in `PrefixGraph.__init__` | W5 29.5× at N=50 000, but small-prefix regressions and high mapping/dual-path maintenance cost | [conda/conda#15980](https://github.com/conda/conda/pull/15980) closed as research-only; not pursuing this optional-shim shape |
 | B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review |
 | B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k with B2+B11: 574.61 s → 64.46 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) draft pending first green CI |
+| B22 | conda | Prefer same-device package cache entries | avoid slow fallback copies when cache entries exist on the target device | [conda/conda#16347](https://github.com/conda/conda/pull/16347) draft |
+| B23 | conda | Run pyc compiler from private helper script | removes per-install temporary script generation while keeping target-prefix Python execution | [conda/conda#16350](https://github.com/conda/conda/pull/16350) draft |
+| B24 | conda | Add uv-style pyc install controls | exposes compile policy, including uv's default no-compile mode | [conda/conda#16352](https://github.com/conda/conda/pull/16352) draft, stacked on B23 |
+| B25 | conda | Retry Windows package extraction longer | absorbs transient NTFS / antivirus races during extraction | [conda/conda#16353](https://github.com/conda/conda/pull/16353) draft |
+| B26 | conda | APFS `clonefile` for copy-mode installs | copy-mode can clone extents instead of copying bytes on APFS | [conda/conda#16368](https://github.com/conda/conda/pull/16368) draft |
+| B27 | conda | `CopyFileW` for Windows copy-mode installs | use the native Windows copy backend for copy-mode paths | [conda/conda#16369](https://github.com/conda/conda/pull/16369) draft, stacked on B26 |
+| B28 | conda | Linux `FICLONE` for copy-mode installs | use reflinks on filesystems that support them, with normal copy fallback | [conda/conda#16367](https://github.com/conda/conda/pull/16367) draft, stacked on B27 |
+| B29 | conda | Aggregate transaction hardlink actions | batch simple hardlink actions while preserving prefix-record creation | [conda/conda#16371](https://github.com/conda/conda/pull/16371) draft, stacked on B28 |
+| B30 | conda | Batch top-level copy-mode transaction actions | batch top-level copy actions after B29, with normal action fallback | [conda/conda#16376](https://github.com/conda/conda/pull/16376) draft, stacked on B29 |
 
-Total: ~250 LOC across all four repositories, no new dependencies,
-no architectural changes, Python 3.10+.
+Current implementation set: 21 filed PRs across four repositories:
+2 merged, 9 open and ready for review, and 10 newer drafts. Dropped,
+superseded, and research-only items remain in the table so later
+readers can see which measured paths were intentionally not carried
+forward.
 
 ### Remaining headroom
 
@@ -196,22 +212,24 @@ bottleneck directly observable rather than speculative:
 
 ### Next steps
 
-As of 2026-07-02, the tracked PR state is: B13 (cps) and B13 (cph)
+As of 2026-07-08, the tracked PR state is: B13 (cps) and B13 (cph)
 merged; B1, B2, B4, B6, B8, B9c, B11, B14, and B20 ready for review;
-B21 is draft pending its first green CI run; and B15 is closed as a
-research-only branch because its optional-rattler shim is not the right
-maintenance shape. The nearest-term work is:
+B21-B30 open as drafts; and B15 closed as a research-only branch
+because its optional-rattler shim is not the right maintenance shape.
+The nearest-term work is:
 
 1. Move standalone B21 [#16331](https://github.com/conda/conda/pull/16331)
    to ready-for-review after its first CI run is green.
-2. Get Windows CI on the branches that touch `gateways/disk/*`
-   (B6, B8, B9c) and verify menuinst-adjacent paths. Windows now has
-   dedicated x86_64 harness data, but not CI coverage or antivirus-on
+2. Promote the July drafts in dependency order: B23 before B24, and
+   B26 → B27 → B28 → B29 → B30 for the same-repo copy/link stack.
+3. Get Windows CI on the branches that touch `gateways/disk/*`
+   (B6, B8, B9c, B25, B27) and verify menuinst-adjacent paths.
+   Windows now has dedicated x86_64 harness data, but not antivirus-on
    transaction profiles.
-3. Add Linux x86_64 numbers to complement the arm64 ones; all
+4. Add Linux x86_64 numbers to complement the arm64 ones; all
    CI and most prod installs are x86_64 and syscall costs are
    not perfectly identical to arm64.
-4. Rerun the Windows W3/W4 stack once the exact April stack branches
+5. Rerun the Windows W3/W4 stack once the exact April stack branches
    are available, or build an equivalent local stack branch, so the
    Windows checkpoint can be compared like-for-like with macOS/Linux.
 
@@ -1627,7 +1645,28 @@ One PR per surviving suspect, same scope rules as Track A.
 | B12 | S12 | Precompute ``dest_dir + os.sep`` once per call to ``extract_stream`` and replace the per-member ``commonpath`` check with a ``startswith`` check. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety``. Phase-2 data: 20 % per-member reduction (11.6 µs → 9.3 µs). Small absolute impact; ships as a cps cleanup PR. |
 | B13 | S13 | Accept a pre-opened ``zipfile.ZipFile`` via a new ``zf=`` kwarg on ``stream_conda_component``. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse``; companion cph consumer on ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` threads one ZipFile through both ``pkg`` and ``info`` components. Phase-2 data: 2× (999 µs → 502 µs for 10 archives). |
 
-Dependencies: B7 gates on B6. Everything else is independent.
+Dependencies: B7 gates on B6. Everything else in the April set is
+independent.
+
+#### July 2026 follow-up PR split
+
+The later copy/link/install work was split out after the April
+benchmark stack so the review queue can handle each platform and
+transaction-path change separately. These PRs are status-tracked here;
+they are not included in the April Phase-4 headline table above.
+
+| ID | Fixes | PR shape |
+|---|---|---|
+| B21 | Faster `PrefixGraph` topological sorting | Draft follow-up for large existing prefixes: [conda/conda#16331](https://github.com/conda/conda/pull/16331). |
+| B22 | Prefer same-device package cache entries | Draft standalone PR against `main`: [conda/conda#16347](https://github.com/conda/conda/pull/16347). |
+| B23 | Run pyc compiler from a private helper script | Draft standalone PR against `main`: [conda/conda#16350](https://github.com/conda/conda/pull/16350). The helper is executed by file path under the target prefix's Python, so it must stay stdlib-only and cannot import conda. |
+| B24 | Add uv-style pyc install controls | Draft stacked on B23: [conda/conda#16352](https://github.com/conda/conda/pull/16352). Highlights uv's default of skipping compile during install. |
+| B25 | Retry Windows package extraction longer | Draft standalone PR against `main`: [conda/conda#16353](https://github.com/conda/conda/pull/16353). |
+| B26 | Use APFS `clonefile` for copy-mode installs | Draft base for the same-repo copy/link stack: [conda/conda#16368](https://github.com/conda/conda/pull/16368). |
+| B27 | Use `CopyFileW` for Windows copy-mode installs | Draft stacked on B26: [conda/conda#16369](https://github.com/conda/conda/pull/16369). |
+| B28 | Use Linux `FICLONE` for copy-mode installs | Draft stacked on B27: [conda/conda#16367](https://github.com/conda/conda/pull/16367). |
+| B29 | Aggregate transaction hardlink actions | Draft stacked on B28: [conda/conda#16371](https://github.com/conda/conda/pull/16371). |
+| B30 | Batch top-level copy-mode transaction actions | Draft stacked on B29: [conda/conda#16376](https://github.com/conda/conda/pull/16376). |
 
 ### Phase 4: end-to-end confirmation
 
@@ -1947,6 +1986,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-07-08 | **Track B tracking refresh through B30.** Tracking issue [#15969](https://github.com/conda/conda/issues/15969) and this Executive Summary were updated to reflect the current filed PR set: 21 implementation PRs across four repositories, with B13 cps [conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) and B13 cph [conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged; B1/B2/B4/B6/B8/B9c/B11/B14/B20 ready for review; and B21-B30 open as drafts. The July follow-up adds B22 package-cache device selection, B23 pyc helper script, B24 uv-style pyc controls, B25 Windows extraction retry, and the B26-B30 copy/link stack (APFS clonefile, Windows CopyFileW, Linux FICLONE, aggregate hardlinks, top-level copy batching). No new full-stack benchmark numbers were folded into the headline table. |
 | 2026-07-02 | **B13 cph merged.** [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged at `41ed6b9`, completing the cph consumer side of the B13 single-`ZipFile` extraction pair after cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) had already landed. Tracking ticket [conda/conda#15969](https://github.com/conda/conda/issues/15969) refreshed: live state is now 2 of 13 PRs merged, 9 ready for review, 1 implementation draft pending first green CI, and 1 research PR closed. No measurements changed. |
 | 2026-07-02 | **B21 draft PR updated with custom `PrefixGraph` topological sort and Windows W3 rerun.** Opened [conda/conda#16331](https://github.com/conda/conda/pull/16331) as a standalone B21 PR on `main`, not stacked on B2 [#15971](https://github.com/conda/conda/pull/15971). Checked stdlib `graphlib.TopologicalSorter` as an alternative, but kept the custom child-adjacency queue because the focused topo comparison showed it is faster (50k: `graphlib` **0.2211 s**, custom **0.0897 s**) while preserving conda's deterministic per-level ordering and cycle-recovery behavior. Public-path tests cover disconnected-node ordering and cycle recovery after acyclic nodes are removed; full `tests/models/test_prefix_graph.py` passed locally on Windows. The current custom implementation reran the B2+B11+B21 Windows strategy: realistic 5k **8.02 s**, 10k **13.74 s**, and 50k **64.46 s** versus the B2+B11 checkpoint's 9.25 s / 27.64 s / 574.61 s. The PR remains draft pending the first green CI run after the custom re-push. |
 | 2026-07-02 | **Windows W3 topological-sort probe.** Re-ran the Windows W3 realistic strategy on the dedicated win-64 host with B2+B11 aligned, then profiled the 10k path. The profile showed the remaining B2+B11 Windows W3 cost was `PrefixGraph._toposort()`, not primarily `MatchSpec`: `PrefixGraph.__init__` took **52.3 s** cumulative, `_toposort()` **51.0 s**, and `dict.pop()` was called **87.0 M** times. A local child-adjacency Kahn-pass prototype, captured as [`data/phase4_windows_toposort_probe/prefix_graph_toposort_prototype.patch`](data/phase4_windows_toposort_probe/prefix_graph_toposort_prototype.patch), measured W3 realistic at 5k **5.63 s**, 10k **9.54 s**, and 50k **33.23 s** versus the previous B2+B11 strategy's 9.25 s / 27.64 s / 574.61 s. This is a promising pure-Python follow-up, but not production-ready until cycle-handling and ordering tests are added. |
