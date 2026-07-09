@@ -133,7 +133,7 @@ table unless called out in the notes.
 | B25 | conda | Retry Windows package extraction longer | transient Windows `EACCES` simulation succeeds after 5th/9th attempt; steady overhead 0.31 us/call | [conda/conda#16353](https://github.com/conda/conda/pull/16353) draft |
 | B26 | conda | APFS `clonefile` for copy-mode installs | copy-mode file creation: 64 MiB file 71.1×, 512 small files 1.43× on APFS | [conda/conda#16368](https://github.com/conda/conda/pull/16368) draft |
 | B27 | conda | `CopyFileW` for Windows copy-mode installs | use the native Windows copy backend for copy-mode paths | [conda/conda#16369](https://github.com/conda/conda/pull/16369) draft, stacked on B26 |
-| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file >200×, 512 small files 1.20×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) draft, stacked on B27 |
+| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file >200×, 512 small files 1.21×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) draft, stacked on B27 |
 | B29 | conda | Aggregate transaction hardlink actions | focused hardlink action execution: 1.08× at 2,048 files, 1.03× at 4,096 files | [conda/conda#16371](https://github.com/conda/conda/pull/16371) draft, stacked on B28 |
 | B30 | conda | Batch top-level copy-mode transaction actions | focused copy action execution: 1.43× at 2,048 files, 1.37× at 4,096 files | [conda/conda#16376](https://github.com/conda/conda/pull/16376) draft, stacked on B29 |
 
@@ -1686,9 +1686,9 @@ measured on Ubuntu 24.04 arm64 with btrfs on `/dev/sdb1`:
 | B25 | 8 transient `EACCES` failures before success | fails after 1 attempt | succeeds on attempt 9 | n/a |
 | B26 | 1 copy-mode file, 64 MiB | 19.59 ms | 0.28 ms | 71.1× |
 | B26 | 512 copy-mode files, 64 KiB each | 102.07 ms | 71.53 ms | 1.43× |
-| B28 | 1 copy-mode file, 64 MiB on Linux btrfs, 64 KiB gate | 13.11 ms | <0.1 ms | >200× |
-| B28 | 512 copy-mode files, 64 KiB each on Linux btrfs, 64 KiB gate | 18.53 ms | 15.47 ms | 1.20× |
-| B28 | 2,048 copy-mode files, 1 KiB each on Linux btrfs, 64 KiB gate | 57.55 ms | 60.06 ms | 0.96× |
+| B28 | 1 copy-mode file, 64 MiB on Linux btrfs, 64 KiB gate | 15.18 ms | <0.1 ms | >200× |
+| B28 | 512 copy-mode files, 64 KiB each on Linux btrfs, 64 KiB gate | 19.28 ms | 15.91 ms | 1.21× |
+| B28 | 2,048 copy-mode files, 1 KiB each on Linux btrfs, 64 KiB gate | 59.47 ms | 61.61 ms | 0.97× |
 | B29 | 2,048 hardlink files, 1 KiB each | 420.41 ms | 389.28 ms | 1.08× |
 | B29 | 4,096 hardlink files, 512 B each | 833.62 ms | 812.97 ms | 1.03× |
 | B30 | 2,048 copy files, 1 KiB each | 270.09 ms | 189.44 ms | 1.43× |
@@ -1700,9 +1700,9 @@ against B29. B27 still needs native Windows copy-backend measurements
 before it should claim numeric speedups.
 
 B28's raw size sweep on Ubuntu btrfs shows the threshold shape behind
-the 64 KiB gate: `FICLONE` loses at 1-8 KiB (0.87-0.92×), breaks even
-around 16 KiB, starts winning at 32 KiB (1.12×), and reaches 1.24× at
-64 KiB and 2.75× at 256 KiB. The 64 KiB cutoff is therefore conservative
+the 64 KiB gate: `FICLONE` loses at 1-16 KiB (0.85-0.97×), starts
+winning at 32 KiB (1.05×), and reaches 1.25× at 64 KiB, 2.17× at
+256 KiB, and 6.50× at 1 MiB. The 64 KiB cutoff is therefore conservative
 and keeps the PR scoped to copy-heavy medium/large files.
 
 ### Phase 4: end-to-end confirmation
@@ -2023,7 +2023,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
-| 2026-07-09 | **Focused B22-B26/B28-B30 measurements added.** The Executive Summary and July follow-up section now include the same measured-impact numbers added to the PR descriptions: B22 same-device cache selection at **3.24×** on a cross-device cache fixture; B23 pyc helper at **1.18×** for 500 files and **0.84×** for 2,000 files; B24 `compile_pyc: false` skipping a **0.95-1.03 s** pyc phase in focused fixtures, with `pyc_compile_threads: 2` at **1.07×** and `pyc_compile_threads: 4` at **0.98×** on 2,000 files; B25 transient Windows `EACCES` simulation succeeding on attempts 5 and 9 with **0.31 us/call** no-failure wrapper overhead; B26 APFS copy-mode creation at **71.1×** for one 64 MiB file and **1.43×** for 512 small files; B28 Linux btrfs copy-mode creation with a 64 KiB gate at **>200×** for one 64 MiB file and **1.20×** for 512 64 KiB files, with the tiny-file raw ioctl regression avoided; B29 hardlink action aggregation at **1.08×** for 2,048 files and **1.03×** for 4,096 files; and B30 top-level copy action batching at **1.43×** for 2,048 files and **1.37×** for 4,096 files. These are focused measurements and do not change the April Phase-4 end-to-end headline table. |
+| 2026-07-09 | **Focused B22-B26/B28-B30 measurements added.** The Executive Summary and July follow-up section now include the same measured-impact numbers added to the PR descriptions: B22 same-device cache selection at **3.24×** on a cross-device cache fixture; B23 pyc helper at **1.18×** for 500 files and **0.84×** for 2,000 files; B24 `compile_pyc: false` skipping a **0.95-1.03 s** pyc phase in focused fixtures, with `pyc_compile_threads: 2` at **1.07×** and `pyc_compile_threads: 4` at **0.98×** on 2,000 files; B25 transient Windows `EACCES` simulation succeeding on attempts 5 and 9 with **0.31 us/call** no-failure wrapper overhead; B26 APFS copy-mode creation at **71.1×** for one 64 MiB file and **1.43×** for 512 small files; B28 Linux btrfs copy-mode creation with a 64 KiB gate at **>200×** for one 64 MiB file and **1.21×** for 512 64 KiB files, with the tiny-file raw ioctl regression avoided; B29 hardlink action aggregation at **1.08×** for 2,048 files and **1.03×** for 4,096 files; and B30 top-level copy action batching at **1.43×** for 2,048 files and **1.37×** for 4,096 files. These are focused measurements and do not change the April Phase-4 end-to-end headline table. |
 | 2026-07-08 | **Track B tracking refresh through B30.** Tracking issue [#15969](https://github.com/conda/conda/issues/15969) and this Executive Summary were updated to reflect the current filed PR set: 21 implementation PRs across four repositories, with B13 cps [conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) and B13 cph [conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged; B1/B2/B4/B6/B8/B9c/B11/B14/B20 ready for review; and B21-B30 open as drafts. The July follow-up adds B22 package-cache device selection, B23 pyc helper script, B24 uv-style pyc controls, B25 Windows extraction retry, and the B26-B30 copy/link stack (APFS clonefile, Windows CopyFileW, Linux FICLONE, aggregate hardlinks, top-level copy batching). No new full-stack benchmark numbers were folded into the headline table. |
 | 2026-07-02 | **B13 cph merged.** [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged at `41ed6b9`, completing the cph consumer side of the B13 single-`ZipFile` extraction pair after cps [conda/conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) had already landed. Tracking ticket [conda/conda#15969](https://github.com/conda/conda/issues/15969) refreshed: live state is now 2 of 13 PRs merged, 9 ready for review, 1 implementation draft pending first green CI, and 1 research PR closed. No measurements changed. |
 | 2026-07-02 | **B21 draft PR updated with custom `PrefixGraph` topological sort and Windows W3 rerun.** Opened [conda/conda#16331](https://github.com/conda/conda/pull/16331) as a standalone B21 PR on `main`, not stacked on B2 [#15971](https://github.com/conda/conda/pull/15971). Checked stdlib `graphlib.TopologicalSorter` as an alternative, but kept the custom child-adjacency queue because the focused topo comparison showed it is faster (50k: `graphlib` **0.2211 s**, custom **0.0897 s**) while preserving conda's deterministic per-level ordering and cycle-recovery behavior. Public-path tests cover disconnected-node ordering and cycle recovery after acyclic nodes are removed; full `tests/models/test_prefix_graph.py` passed locally on Windows. The current custom implementation reran the B2+B11+B21 Windows strategy: realistic 5k **8.02 s**, 10k **13.74 s**, and 50k **64.46 s** versus the B2+B11 checkpoint's 9.25 s / 27.64 s / 574.61 s. The PR remains draft pending the first green CI run after the custom re-push. |
