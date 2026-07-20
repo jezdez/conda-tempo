@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 stacked profiles committed. Seven implementation PRs are merged, B6 is approved with auto-merge waiting on CI, B20 is in review, and 9 drafts need follow-up. W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
+| **Status** | Phase 4 stacked profiles committed. Seven implementation PRs are merged, B6 is closed after current-main benchmarks showed regressions, B20 is in review, and 9 drafts need follow-up. W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,7 +31,8 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-07-20 after the full PR-state and review-feedback audit. Headline
+> 2026-07-20 after the B6 current-main remeasurement and full PR-state
+> audit. Headline
 > macOS/Linux end-to-end numbers remain unchanged since the 2026-04-24
 > stacked runs._
 
@@ -113,7 +114,7 @@ table unless called out in the notes.
 | B1 | conda | Quadratic diff sort | 782× at N=50 000 | [conda/conda#15970](https://github.com/conda/conda/pull/15970) merged 2026-07-11 |
 | B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | [conda/conda#15971](https://github.com/conda/conda/pull/15971) merged 2026-07-12 |
 | B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB, but only by dropping `conda doctor` altered-file data | [conda/conda#15972](https://github.com/conda/conda/pull/15972) draft, recommend closing unless altered-file detection becomes opt-in |
-| B6 | conda | Parallel transaction-action verification through the shared executor | Opt-in through `verify_threads` | [conda/conda#15973](https://github.com/conda/conda/pull/15973) approved with auto-merge enabled, CI rerunning |
+| B6 | conda | Parallel transaction-action verification through the shared executor | Current-main real-package runs: K=2 was 14-36 % slower and K=4 was 14-40 % slower in prepare/verify | [conda/conda#15973](https://github.com/conda/conda/pull/15973) closed; B9c removed the per-action codesign cost that had justified this direction |
 | B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
 | B8 | conda | Process-pool package extraction | 1.56× vs serial on the S8 fresh-cache fixture | [conda/conda#15974](https://github.com/conda/conda/pull/15974) merged 2026-07-14 |
 | B9a | conda | pyc batching across packages | misidentified — already batched | dropped |
@@ -138,9 +139,8 @@ table unless called out in the notes.
 | B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) draft based directly on B28 with seven unresolved review threads |
 
 Current implementation set: 22 filed PRs across four repositories. Seven are
-merged. B6 is approved with auto-merge enabled while its refreshed CI runs,
-B20 is ready for review, nine remain draft, and four were closed after the
-measurements showed a semantic problem, no standalone benefit, or no
+merged. B20 is ready for review, nine remain draft, and five were closed after
+the measurements showed a semantic problem, no standalone benefit, or no
 end-to-end win. Dropped, superseded, and research-only items remain in the
 table so later readers can see which measured paths were intentionally not
 carried forward.
@@ -214,12 +214,10 @@ bottleneck directly observable rather than speculative:
 
 ### Next steps
 
-As of 2026-07-20, seven PRs are merged. B6 is approved with auto-merge enabled
-and waiting on its refreshed CI run. B20 is ready for review. Nine PRs remain
-draft, and B14, B15, B23, and B29 are closed. The nearest-term work is:
+As of 2026-07-20, seven PRs are merged. B20 is ready for review. Nine PRs remain
+draft, and B6, B14, B15, B23, and B29 are closed. The nearest-term work is:
 
-1. Let B6 [#15973](https://github.com/conda/conda/pull/15973) auto-merge after
-   required checks pass. Follow up on B20
+1. Follow up on B20
    [conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175)
    after Daniel answers whether the sandboxed-extraction idea can remain
    separate work.
@@ -1194,14 +1192,49 @@ steps are bounded by disk throughput; none allocate meaningfully
 (memray at M=1 000 peaks at 22.5 MiB, 4 601 allocations, in
 [`memray_n1000.meta.json`](data/phase2/s6_verify_individual/memray_n1000.meta.json)).
 
-Projection for W1 (Phase-1 cProfile showed 200 actions × 4.97 s =
-24.9 ms/action at real package file sizes — larger than our 4 KB
+The original April projection for W1 (Phase-1 cProfile showed 200 actions ×
+4.97 s = 24.9 ms/action at real package file sizes — larger than our 4 KB
 synthetic because real binaries are 10–100 KB): W1's
 `_verify_individual_level` takes ~5.5 s. Parallelizing across
 `min(cpu, 4)` worker threads should drop this to ~1.4 s, assuming the
 disk can keep up — which on NVMe at small-file sizes it comfortably
 can. That's a **4 s / 10 s W1 wall-time reduction (~40 %)** before any
-other fix.
+other fix. This projection is superseded by the current-main remeasurement
+below: it attributed work later removed from individual actions by B9c and did
+not include executor scheduling for the much larger population of cheap path
+checks.
+
+##### S6 current-main remeasurement and disposition (2026-07-20)
+
+Re-ran [#15973](https://github.com/conda/conda/pull/15973) at `34a5720`
+against conda `main` at `0cdbbf6`, after B9c
+[#15975](https://github.com/conda/conda/pull/15975) merged. Runs used real
+conda-forge packages, warm package caches, randomized paired ordering, and the
+real solve plus transaction prepare/verify path. The macOS W1 and W2 workloads
+used 15 and 10 repetitions; Linux arm64 W1 used 10 repetitions.
+
+| Workload | K=2 vs PR K=1 prepare/verify | K=4 vs PR K=1 prepare/verify | Solve + prepare/verify wall, K=2 / K=4 |
+|---|---:|---:|---:|
+| macOS W1, 29 packages | **+22.7 %** (95 % median CI +20.8 to +26.1 %) | **+28.0 %** (+25.4 to +30.3 %) | **+13.1 % / +15.3 %** |
+| macOS W2, 211 packages | **+35.6 %** (+32.7 to +37.7 %) | **+39.5 %** (+36.5 to +41.8 %) | **+24.9 % / +27.3 %** |
+| Linux arm64 W1, 35 packages | **+14.1 %** (+12.0 to +15.8 %) | **+14.4 %** (+9.6 to +17.7 %) | **+6.2 % / +2.6 %** |
+
+The action profile explains the regression. W1 submitted 8,080 actions and W2
+submitted 36,811 actions, but 97-98 % were ordinary `LinkPathAction` checks
+with a median cost of about 24 µs. Only 202/364 were prefix rewrites, with
+medians of 0.48/0.57 ms. Mapping every action through the executor costs more
+than the work it overlaps. The PR's four-action test sleeps 50 ms per action,
+so it proves concurrency against a workload roughly 100 times heavier than a
+real prefix rewrite and about 2,000 times heavier than the dominant path
+check.
+
+A 200-action prefix-rewrite crossover probe found that K=2 only began helping
+around 256 KiB files (1.08x) and reached 1.15x at 1 MiB; K=4 was slower at
+every tested size. Real prefix-rewrite files had 1.4-1.5 KiB medians and
+113-222 KiB p95 sizes. Enabling `extra_safety_checks` also remained slower on
+warm caches. **Disposition: close B6.** A future attempt would need to batch
+work or select only demonstrably expensive actions, with fresh end-to-end
+evidence.
 
 ##### S6 proposed fix sketch (Phase-3 B6)
 
@@ -1594,7 +1627,7 @@ PR'd; see the per-repo branches:
 | **B1** | `conda/conda:jezdez/track-b-b1-diff-sort-index` | **782× at N=50 000** (12.46 s → 15.9 ms) | ~24 s saved on ``update --all`` against 50k prefix |
 | **B2** | `conda/conda:jezdez/track-b-b2-prefix-graph-by-name` | **53× at N=1 000** (4.18 s → 78 ms) | latent; helps big `update --all` |
 | **B4** | `conda/conda:jezdez/track-b-b4-sha256-gate` | **27 % per-file** at 1/10/50 MB files | ~25 % off verify phase for ML-heavy prefixes |
-| **B6** | `conda/conda:jezdez/track-b-b6-verify-parallel` | 1.26× at K=2 (opt-in via `verify_threads`) | ≤ ~25 % off W1 verify phase when enabled |
+| **B6** | `conda/conda:jezdez/track-b-b6-verify-parallel` | Historical synthetic: 1.26× at K=2; current-main real-package runs: 14-36 % slower | Closed; executor overhead dominates after B9c |
 | **B7** | dropped | n/a | regresses on Linux |
 | **B8** | `conda/conda:jezdez/track-b-b8-extract-threads` | ~8 % on mac, flat Linux | ~0.3 s off fetch/extract |
 | **B9a** | dropped | n/a | aggregation is already wired; misidentified hot path |
@@ -1642,7 +1675,7 @@ One PR per surviving suspect, same scope rules as Track A.
 | B3 | S3 | Append-only history updates. `History.update()` only needs the last `==>` block. Read the file from the end until the last header, parse only that block. Verify against `History.get_user_requests()`. Phase-2 data: 30 ms at N=50 000 lines — small absolute cost, consider deferring. |
 | B4 | S4 | Gate ``sha256_in_prefix = compute_sum(...)`` on ``context.extra_safety_checks``. Phase-2 data showed a **27 % per-file verify reduction** at 1/10/50 MB, but the implementation removes the reference digest used by `doctor.health_checks.altered_files`. Computing the digest during prefix replacement was slower than the current two-pass implementation. The PR remains draft and should close unless altered-file detection is intentionally made opt-in. |
 | B5 | S5 | Build a single `{short_path: prefix_rec}` map once before the clobber loop. Phase-2 data: ``_verify_prefix_level`` is 2.8 µs/path and only ~80 ms at W2 scale — not worth a PR on its own. |
-| B6 | S6 | Flatten unverified transaction actions into one ordered stream and map their `verify()` calls through the existing executor. Prefix-level checks reuse the executor after action verification. Each worker returns B9c signing paths to the parent for one batched codesign flush. The default remains one worker, and `verify_threads` opts into parallel verification. Approved with auto-merge enabled while refreshed CI runs. |
+| B6 | S6 | **CLOSED.** Current-main real-package runs on macOS and Linux made prepare/verify 14-40 % slower with K=2/K=4. B9c moved codesign out of each action, leaving thousands of ~24 µs checks whose executor overhead dominates. The original synthetic test and PR test used much heavier actions and did not represent the shipping action mix. |
 | B7 | S7 | **Revised:** Linux confirmation showed `ThreadPoolExecutor` parallel link *regresses* by 2–3× on fast filesystems (kernel serialization of inode creation is already fast enough that Python scheduling overhead dominates). macOS-only win at 1.7×. Options: (a) drop B7 entirely; (b) gate the fan-out behind a slow-disk heuristic (``stat`` the prefix, benchmark a handful of hardlinks, only parallelize if > 0.1 ms each); (c) leave it as an opt-in when the user sets `execute_threads > 1` manually. Recommended: (c) — leave user override working, don't change default. ~0 LOC (just documentation). |
 | B8 | S8 | Final PR direction changed after review from a one-line `EXTRACT_THREADS = 2` cap to process-pool package extraction. Selected conservative `spawn-4` path measured 1.534 s median vs 2.395 s serial (1.56×) on the S8 fresh-cache fixture; custom extractors, unsupported archive types, and debug mode stay on the existing plugin/thread path. |
 | ~~B9a~~ | ~~S9 (original)~~ | **DROPPED.** Phase-1 S9 analysis misidentified the hot path — the 186 subprocess calls on macOS W2 are ``codesign``, not ``compileall``. ``AggregateCompileMultiPycAction`` already handles the compile aggregation (see ``link.py:996``). No fix needed. |
@@ -1653,8 +1686,8 @@ One PR per surviving suspect, same scope rules as Track A.
 | B12 | S12 | Precompute ``dest_dir + os.sep`` once per call to ``extract_stream`` and replace the per-member ``commonpath`` check with a ``startswith`` check. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b12-extract-safety``. Phase-2 data: 20 % per-member reduction (11.6 µs → 9.3 µs). Small absolute impact; ships as a cps cleanup PR. |
 | B13 | S13 | Accept a pre-opened ``zipfile.ZipFile`` via a new ``zf=`` kwarg on ``stream_conda_component``. Implemented on ``conda/conda-package-streaming:jezdez/track-b-b13-single-zipfile-parse``; companion cph consumer on ``conda/conda-package-handling:jezdez/track-b-b13-reuse-zipfile`` threads one ZipFile through both ``pkg`` and ``info`` components. Phase-2 data: 2× (999 µs → 502 µs for 10 archives). |
 
-The surviving April items are independent. B7 is dropped, so it no longer
-gates on B6.
+The surviving April items are independent. B6 and B7 are both closed/dropped;
+neither gates the remaining work.
 
 #### July 2026 follow-up PR split
 
@@ -2034,6 +2067,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-07-20 | **B6 closed after current-main real-package remeasurement.** Re-ran [#15973](https://github.com/conda/conda/pull/15973) after B9c merged using randomized paired macOS W1/W2 and Linux arm64 W1 transactions. K=2 made prepare/verify **14-36 % slower** and K=4 made it **14-40 % slower**; solve + prepare/verify wall time also regressed. Real workloads contained 8,080/36,811 actions dominated by ~24 µs path checks, while only 202/364 prefix rewrites had ~0.5 ms median cost. The executor therefore schedules thousands of tasks too small to amortize its overhead. B6 is now a measured dead end; a future design would need batching or an expensive-action threshold and new end-to-end evidence. Headline Phase-4 numbers are unchanged because their default `verify_threads = 1` left B6 dormant. |
 | 2026-07-20 | **Full Track B PR and review audit completed.** Five additional implementation PRs have merged: B1 [#15970](https://github.com/conda/conda/pull/15970), B2 [#15971](https://github.com/conda/conda/pull/15971), B8 [#15974](https://github.com/conda/conda/pull/15974), B9c [#15975](https://github.com/conda/conda/pull/15975), and B11 [conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921). Together with both B13 PRs, the merged count is now 7 of 22 filed PRs. B6 [#15973](https://github.com/conda/conda/pull/15973) is approved with auto-merge enabled while refreshed CI runs. B20 [conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) is ready and waiting for Daniel's follow-up. Nine PRs remain draft. B14 [conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), B23 [#16350](https://github.com/conda/conda/pull/16350), and B29 [#16371](https://github.com/conda/conda/pull/16371) are now recorded as closed alongside research-only B15. The July status table and next steps now include every unresolved human review thread, the B22/B24/B25 conflicts, the Python 3.12+ `_winapi.CopyFile2` follow-up for B27, the Python 3.14 `shutil.copyfile` comparison for B28, and B30's current package-subtree implementation and end-to-end measurements. No headline Phase-4 benchmark numbers changed. |
 | 2026-07-09 | **Focused B22-B30 measurements added.** The Executive Summary and July follow-up section now include the same measured-impact numbers added to the PR descriptions: B22 same-device cache selection at **3.24×** on a cross-device cache fixture; B23 pyc helper at **1.18×** for 500 files and **0.84×** for 2,000 files; B24 `compile_pyc: false` skipping a **0.95-1.03 s** pyc phase in focused fixtures, with `pyc_compile_threads: 2` at **1.07×** and `pyc_compile_threads: 4` at **0.98×** on 2,000 files; B25 transient Windows `EACCES` simulation succeeding on attempts 5 and 9 with **0.31 us/call** no-failure wrapper overhead; B26 APFS copy-mode creation at **71.1×** for one 64 MiB file and **1.43×** for 512 small files; B27 Windows NTFS copy-mode creation at **3.02×** for one 64 MiB file, **10.0×** for 512 64 KiB files, and **8.53×** for 2,048 1 KiB files; B28 Linux btrfs copy-mode creation with a 64 KiB gate at **>200×** for one 64 MiB file and **1.21×** for 512 64 KiB files, with the tiny-file raw ioctl regression avoided; B29 hardlink action aggregation at **1.08×** for 2,048 files and **1.03×** for 4,096 files; and B30 top-level copy action batching at **1.43×** for 2,048 files and **1.37×** for 4,096 files. These are focused measurements and do not change the April Phase-4 end-to-end headline table. |
 | 2026-07-08 | **Track B tracking refresh through B30.** Tracking issue [#15969](https://github.com/conda/conda/issues/15969) and this Executive Summary were updated to reflect the current filed PR set: 21 implementation PRs across four repositories, with B13 cps [conda-package-streaming#173](https://github.com/conda/conda-package-streaming/pull/173) and B13 cph [conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged; B1/B2/B4/B6/B8/B9c/B11/B14/B20 ready for review; and B21-B30 open as drafts. The July follow-up adds B22 package-cache device selection, B23 pyc helper script, B24 uv-style pyc controls, B25 Windows extraction retry, and the B26-B30 copy/link stack (APFS clonefile, Windows CopyFileW, Linux FICLONE, aggregate hardlinks, top-level copy batching). No new full-stack benchmark numbers were folded into the headline table. |
