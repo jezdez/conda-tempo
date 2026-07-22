@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Phase 4 stacked profiles committed. Seven implementation PRs are merged, B6 is closed after current-main benchmarks showed regressions, B20 is in review, and 9 drafts need follow-up. W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
+| **Status** | Phase 4 stacked profiles committed. Seven implementation PRs are merged, nine are ready for review, B30 is the remaining draft, and five are closed. W3@50k on stack: mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,8 +31,8 @@
 ## Executive Summary
 
 > _Kept in sync with the Changelog and Phase 4 numbers. Last refreshed
-> 2026-07-20 after the B6 current-main remeasurement and full PR-state
-> audit. Headline
+> 2026-07-22 after the B27 `CopyFile2` measurement and full PR-state
+> refresh. Headline
 > macOS/Linux end-to-end numbers remain unchanged since the 2026-04-24
 > stacked runs._
 
@@ -113,7 +113,7 @@ table unless called out in the notes.
 |---|---|---|---|---|
 | B1 | conda | Quadratic diff sort | 782× at N=50 000 | [conda/conda#15970](https://github.com/conda/conda/pull/15970) merged 2026-07-11 |
 | B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | [conda/conda#15971](https://github.com/conda/conda/pull/15971) merged 2026-07-12 |
-| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB, but only by dropping `conda doctor` altered-file data | [conda/conda#15972](https://github.com/conda/conda/pull/15972) draft, recommend closing unless altered-file detection becomes opt-in |
+| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB, but only by dropping `conda doctor` altered-file data | [conda/conda#15972](https://github.com/conda/conda/pull/15972) ready for review, but recommend closing unless altered-file detection becomes opt-in |
 | B6 | conda | Parallel transaction-action verification through the shared executor | Current-main real-package runs: K=2 was 14-36 % slower and K=4 was 14-40 % slower in prepare/verify | [conda/conda#15973](https://github.com/conda/conda/pull/15973) closed; B9c removed the per-action codesign cost that had justified this direction |
 | B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
 | B8 | conda | Process-pool package extraction | 1.56× vs serial on the S8 fresh-cache fixture | [conda/conda#15974](https://github.com/conda/conda/pull/15974) merged 2026-07-14 |
@@ -127,22 +127,22 @@ table unless called out in the notes.
 | B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract, but the mtime premise was wrong | [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174) closed and dropped |
 | B15 | conda | Optional py-rattler fast path in `PrefixGraph.__init__` | W5 29.5× at N=50 000, but small-prefix regressions and high mapping/dual-path maintenance cost | [conda/conda#15980](https://github.com/conda/conda/pull/15980) closed as research-only because the optional shim is not being pursued |
 | B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) ready for review, awaiting Daniel's follow-up |
-| B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k with B2+B11: 574.61 s → 64.46 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) draft with green CI and four unresolved review threads |
-| B22 | conda | Prefer same-device package cache entries | cross-device cache selection fixture: 3.24× by picking same-device hardlink path | [conda/conda#16347](https://github.com/conda/conda/pull/16347) draft with conflicts and three unresolved review threads |
+| B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k with B2+B11: 574.61 s → 64.46 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) ready for review with green CI |
+| B22 | conda | Prefer same-device package cache entries | cross-device cache selection fixture: 3.24× by picking same-device hardlink path | [conda/conda#16347](https://github.com/conda/conda/pull/16347) rebased, green, and ready for review |
 | B23 | conda | Run pyc compiler from private helper script | focused pyc phase stays in same band: 1.18× at 500 files, 0.84× at 2,000 files | [conda/conda#16350](https://github.com/conda/conda/pull/16350) closed, superseded by B24's direct `compileall -j` path |
-| B24 | conda | Add uv-style pyc install controls | `compile_pyc: false` skips ~0.95-1.03 s pyc phase in focused Python-file fixtures | [conda/conda#16352](https://github.com/conda/conda/pull/16352) standalone draft with conflicts and two unresolved review threads |
-| B25 | conda | Retry Windows package extraction longer | transient Windows `EACCES` simulation succeeds after 5th/9th attempt, steady overhead 0.31 us/call | [conda/conda#16353](https://github.com/conda/conda/pull/16353) draft with conflicts and two unresolved review threads |
-| B26 | conda | APFS `clonefile` for copy-mode installs | copy-mode file creation: 64 MiB file 71.1×, 512 small files 1.43× on APFS | [conda/conda#16368](https://github.com/conda/conda/pull/16368) draft with green CI, needs one requested docstring |
-| B27 | conda | Windows copy backend | Windows NTFS copy-mode creation: 64 MiB file 3.02×, 512 small files 10.0×, 2,048 tiny files 8.53× | [conda/conda#16369](https://github.com/conda/conda/pull/16369) draft on B26, trial `_winapi.CopyFile2` on Python 3.12+ with a 3.10/3.11 fallback |
-| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file >200×, 512 small files 1.21×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) draft on B27, needs a Python 3.14 `shutil.copyfile` comparison |
+| B24 | conda | Add uv-style pyc install controls | `compile_pyc: false` skips ~0.95-1.03 s pyc phase in focused Python-file fixtures | [conda/conda#16352](https://github.com/conda/conda/pull/16352) standalone, rebased, green, and ready for review |
+| B25 | conda | Retry Windows package extraction longer | transient Windows `EACCES` simulation succeeds after 5th/9th attempt, steady overhead 0.31 us/call | [conda/conda#16353](https://github.com/conda/conda/pull/16353) rebased, green, and ready for review |
+| B26 | conda | APFS `clonefile` for copy-mode installs | copy-mode file creation: 64 MiB file 71.1×, 512 small files 1.43× on APFS | [conda/conda#16368](https://github.com/conda/conda/pull/16368) green and ready for review |
+| B27 | conda | Native Windows copy backend | Windows NTFS `CopyFile2` creation: 64 MiB file 2.72×, 512 small files 10.18×, 2,048 tiny files 8.80× | [conda/conda#16369](https://github.com/conda/conda/pull/16369) ready for review on B26, with `CopyFileW` fallback on Python 3.10 and 3.11 |
+| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file 242×, 512 small files 1.54×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) green and ready for review on B27 after the Python 3.14 comparison |
 | B29 | conda | Aggregate transaction hardlink actions | focused wins did not survive powered W1 | [conda/conda#16371](https://github.com/conda/conda/pull/16371) closed, no end-to-end win |
-| B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) draft based directly on B28 with seven unresolved review threads |
+| B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) conflicting draft on B28 with seven unresolved review threads |
 
 Current implementation set: 22 filed PRs across four repositories. Seven are
-merged. B20 is ready for review, nine remain draft, and five were closed after
-the measurements showed a semantic problem, no standalone benefit, or no
-end-to-end win. Dropped, superseded, and research-only items remain in the
-table so later readers can see which measured paths were intentionally not
+merged, nine are ready for review, B30 is the remaining draft, and five were
+closed after the measurements showed a semantic problem, no standalone benefit,
+or no end-to-end win. Dropped, superseded, and research-only items remain in
+the table so later readers can see which measured paths were intentionally not
 carried forward.
 
 ### Remaining headroom
@@ -214,24 +214,25 @@ bottleneck directly observable rather than speculative:
 
 ### Next steps
 
-As of 2026-07-20, seven PRs are merged. B20 is ready for review. Nine PRs remain
-draft, and B6, B14, B15, B23, and B29 are closed. The nearest-term work is:
+As of 2026-07-22, seven PRs are merged, nine are ready for review, B30 is the
+remaining draft, and B6, B14, B15, B23, and B29 are closed. The nearest-term
+work is:
 
 1. Follow up on B20
    [conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175)
    after Daniel answers whether the sandboxed-extraction idea can remain
    separate work.
-2. Address B21 [#16331](https://github.com/conda/conda/pull/16331) review
-   feedback, especially the explicit wave-ordering regression test, then move
-   it to ready for review.
-3. Rebase B22 [#16347](https://github.com/conda/conda/pull/16347), B24
+2. Get review on B21 [#16331](https://github.com/conda/conda/pull/16331), B22
+   [#16347](https://github.com/conda/conda/pull/16347), B24
    [#16352](https://github.com/conda/conda/pull/16352), and B25
-   [#16353](https://github.com/conda/conda/pull/16353), then address their
-   focused review comments before promotion.
-4. Finish the platform copy stack in order. Add the requested B26 docstring,
-   trial `_winapi.CopyFile2` on Python 3.12+ in B27 while retaining a Python
-   3.10/3.11 fallback, compare B28 directly with Python 3.14
-   `shutil.copyfile`, and simplify and document B30 before re-review.
+   [#16353](https://github.com/conda/conda/pull/16353). They are rebased, green,
+   and have no unresolved review threads.
+3. Land the platform copy stack in order: B26
+   [#16368](https://github.com/conda/conda/pull/16368), B27
+   [#16369](https://github.com/conda/conda/pull/16369), and B28
+   [#16367](https://github.com/conda/conda/pull/16367).
+4. Rebase, simplify, and document B30
+   [#16376](https://github.com/conda/conda/pull/16376) before re-review.
 5. Decide whether to close B4 [#15972](https://github.com/conda/conda/pull/15972).
    Its measured gain currently comes from removing data used by `conda doctor`,
    so it is not a performance-preserving change under the current contract.
@@ -1698,16 +1699,16 @@ they are not included in the April Phase-4 headline table above.
 
 | ID | Fixes | PR status |
 |---|---|---|
-| B21 | Faster `PrefixGraph` topological sorting | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is a green draft with four unresolved review threads. |
-| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) is a standalone draft with conflicts and three unresolved review threads. |
+| B21 | Faster `PrefixGraph` topological sorting | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is green and ready for review. |
+| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) is standalone, rebased, green, and ready for review. |
 | B23 | Run pyc compiler from a private helper script | [conda/conda#16350](https://github.com/conda/conda/pull/16350) is closed. The larger fixture regressed and B24 now uses `compileall -j` directly. |
-| B24 | Add uv-style pyc install controls | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is now standalone, with conflicts and two unresolved review threads. |
-| B25 | Retry Windows package extraction longer | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is a standalone draft with conflicts and two unresolved review threads. |
-| B26 | Use APFS `clonefile` for copy-mode installs | [conda/conda#16368](https://github.com/conda/conda/pull/16368) is a green draft and the base of the platform copy stack. One requested docstring remains. |
-| B27 | Add a Windows copy backend | [conda/conda#16369](https://github.com/conda/conda/pull/16369) is a draft on B26. Follow up on `_winapi.CopyFile2` for Python 3.12+ and retain a 3.10/3.11 fallback. |
-| B28 | Use Linux `FICLONE` for copy-mode installs | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is a draft on B27. Compare directly with Python 3.14 `shutil.copyfile` before promotion. |
+| B24 | Add uv-style pyc install controls | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is standalone, rebased, green, and ready for review. |
+| B25 | Retry Windows package extraction longer | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is standalone, rebased, green, and ready for review. |
+| B26 | Use APFS `clonefile` for copy-mode installs | [conda/conda#16368](https://github.com/conda/conda/pull/16368) is green, ready for review, and the base of the platform copy stack. |
+| B27 | Add a native Windows copy backend | [conda/conda#16369](https://github.com/conda/conda/pull/16369) is green and ready for review on B26. Python 3.12+ uses `_winapi.CopyFile2`, while Python 3.10 and 3.11 retain the `CopyFileW` fallback. |
+| B28 | Use Linux `FICLONE` for copy-mode installs | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is green and ready for review on B27 after the Python 3.14 `shutil.copyfile` comparison. |
 | B29 | Aggregate transaction hardlink actions | [conda/conda#16371](https://github.com/conda/conda/pull/16371) is closed after a powered W1 run was neutral. |
-| B30 | Clone eligible package subtrees on APFS | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is based directly on B28 and has seven unresolved review threads. |
+| B30 | Clone eligible package subtrees on APFS | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is a conflicting draft on B28 with seven unresolved review threads. |
 
 Focused follow-up measurements on macOS 26.5.2 arm64 with APFS,
 using the Python 3.10 conda dev environment, except B27 which was
@@ -1728,12 +1729,12 @@ on Ubuntu 24.04 arm64 with btrfs on `/dev/sdb1`:
 | B25 | 8 transient `EACCES` failures before success | fails after 1 attempt | succeeds on attempt 9 | n/a |
 | B26 | 1 copy-mode file, 64 MiB | 19.59 ms | 0.28 ms | 71.1× |
 | B26 | 512 copy-mode files, 64 KiB each | 102.07 ms | 71.53 ms | 1.43× |
-| B27 | 1 copy-mode file, 64 MiB on Windows NTFS | 43.02 ms | 14.24 ms | 3.02× |
-| B27 | 512 copy-mode files, 64 KiB each on Windows NTFS | 4.80 s | 480.06 ms | 10.0× |
-| B27 | 2,048 copy-mode files, 1 KiB each on Windows NTFS | 12.26 s | 1.44 s | 8.53× |
-| B28 | 1 copy-mode file, 64 MiB on Linux btrfs, 64 KiB gate | 15.18 ms | <0.1 ms | >200× |
-| B28 | 512 copy-mode files, 64 KiB each on Linux btrfs, 64 KiB gate | 19.28 ms | 15.91 ms | 1.21× |
-| B28 | 2,048 copy-mode files, 1 KiB each on Linux btrfs, 64 KiB gate | 59.47 ms | 61.61 ms | 0.97× |
+| B27 | 1 copy-mode file, 64 MiB on Windows NTFS | 44.02 ms | 16.18 ms | 2.72× |
+| B27 | 512 copy-mode files, 64 KiB each on Windows NTFS | 1.897 s | 186.35 ms | 10.18× |
+| B27 | 2,048 copy-mode files, 1 KiB each on Windows NTFS | 8.311 s | 944.57 ms | 8.80× |
+| B28 | 1 copy-mode file, 64 MiB on Linux btrfs, 64 KiB gate | 14.47 ms | 0.060 ms | 242× |
+| B28 | 512 copy-mode files, 64 KiB each on Linux btrfs, 64 KiB gate | 22.41 ms | 14.58 ms | 1.54× |
+| B28 | 2,048 copy-mode files, 1 KiB each on Linux btrfs, 64 KiB gate | 53.34 ms | 55.71 ms | 0.96× |
 | B29 | Powered W1, normal hardlink install | 5.915 s | 5.919 s | neutral, PR closed |
 | B30 | W1 fresh Python + requests | 6.022 s | 5.939 s | 1.4 % faster |
 | B30 | W2 fresh data-science environment | 17.356 s | 13.411 s | 22.7 % faster |
@@ -1742,6 +1743,10 @@ on Ubuntu 24.04 arm64 with btrfs on `/dev/sdb1`:
 B22-B27 compare against their PR bases as described in the table. B28 compares
 against B27. B29 and B30 compare against B28 because B30 was restacked directly
 after B29 closed.
+
+B27's powered 20-repeat run also compared `CopyFile2` with `CopyFileW` on the
+same Python 3.13.13 NTFS fixture. `CopyFile2` was 7.1 % slower for one 64 MiB
+file and within 1 % for the 512-file and 2,048-file cases.
 
 B28's raw size sweep on Ubuntu btrfs shows the threshold pattern behind
 the 64 KiB gate: `FICLONE` loses at 1-16 KiB (0.85-0.97×), starts
@@ -2067,6 +2072,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 
 | Date | Change |
 |---|---|
+| 2026-07-22 | **B27 native Windows copy follow-up completed.** Updated [#16369](https://github.com/conda/conda/pull/16369) to use CPython's `_winapi.CopyFile2` wrapper on Python 3.12+ and retain `CopyFileW` on Python 3.10 and 3.11. A powered 20-repeat Windows 11 ARM64 NTFS comparison measured `CopyFile2` at **2.72×** for one 64 MiB file, **10.18×** for 512 64 KiB files, and **8.80×** for 2,048 1 KiB files versus conda's Python copy loop. `CopyFile2` was within 7.1 % of `CopyFileW` for the large-file case and within 1 % for both multi-file cases. The native path passed on Garak under Python 3.10.20, 3.11.15, and 3.13.14. B27 is now ready for review, leaving B30 as the only implementation draft. The broader Track B status is seven merged, nine ready for review, one draft, and five closed. |
 | 2026-07-20 | **B6 closed after current-main real-package remeasurement.** Re-ran [#15973](https://github.com/conda/conda/pull/15973) after B9c merged using randomized paired macOS W1/W2 and Linux arm64 W1 transactions. K=2 made prepare/verify **14-36 % slower** and K=4 made it **14-40 % slower**; solve + prepare/verify wall time also regressed. Real workloads contained 8,080/36,811 actions dominated by ~24 µs path checks, while only 202/364 prefix rewrites had ~0.5 ms median cost. The executor therefore schedules thousands of tasks too small to amortize its overhead. B6 is now a measured dead end; a future design would need batching or an expensive-action threshold and new end-to-end evidence. Headline Phase-4 numbers are unchanged because their default `verify_threads = 1` left B6 dormant. |
 | 2026-07-20 | **Full Track B PR and review audit completed.** Five additional implementation PRs have merged: B1 [#15970](https://github.com/conda/conda/pull/15970), B2 [#15971](https://github.com/conda/conda/pull/15971), B8 [#15974](https://github.com/conda/conda/pull/15974), B9c [#15975](https://github.com/conda/conda/pull/15975), and B11 [conda-libmamba-solver#921](https://github.com/conda/conda-libmamba-solver/pull/921). Together with both B13 PRs, the merged count is now 7 of 22 filed PRs. B6 [#15973](https://github.com/conda/conda/pull/15973) is approved with auto-merge enabled while refreshed CI runs. B20 [conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) is ready and waiting for Daniel's follow-up. Nine PRs remain draft. B14 [conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174), B23 [#16350](https://github.com/conda/conda/pull/16350), and B29 [#16371](https://github.com/conda/conda/pull/16371) are now recorded as closed alongside research-only B15. The July status table and next steps now include every unresolved human review thread, the B22/B24/B25 conflicts, the Python 3.12+ `_winapi.CopyFile2` follow-up for B27, the Python 3.14 `shutil.copyfile` comparison for B28, and B30's current package-subtree implementation and end-to-end measurements. No headline Phase-4 benchmark numbers changed. |
 | 2026-07-09 | **Focused B22-B30 measurements added.** The Executive Summary and July follow-up section now include the same measured-impact numbers added to the PR descriptions: B22 same-device cache selection at **3.24×** on a cross-device cache fixture; B23 pyc helper at **1.18×** for 500 files and **0.84×** for 2,000 files; B24 `compile_pyc: false` skipping a **0.95-1.03 s** pyc phase in focused fixtures, with `pyc_compile_threads: 2` at **1.07×** and `pyc_compile_threads: 4` at **0.98×** on 2,000 files; B25 transient Windows `EACCES` simulation succeeding on attempts 5 and 9 with **0.31 us/call** no-failure wrapper overhead; B26 APFS copy-mode creation at **71.1×** for one 64 MiB file and **1.43×** for 512 small files; B27 Windows NTFS copy-mode creation at **3.02×** for one 64 MiB file, **10.0×** for 512 64 KiB files, and **8.53×** for 2,048 1 KiB files; B28 Linux btrfs copy-mode creation with a 64 KiB gate at **>200×** for one 64 MiB file and **1.21×** for 512 64 KiB files, with the tiny-file raw ioctl regression avoided; B29 hardlink action aggregation at **1.08×** for 2,048 files and **1.03×** for 4,096 files; and B30 top-level copy action batching at **1.43×** for 2,048 files and **1.37×** for 4,096 files. These are focused measurements and do not change the April Phase-4 end-to-end headline table. |

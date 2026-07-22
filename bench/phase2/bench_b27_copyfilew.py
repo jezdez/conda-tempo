@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""B27 focused benchmark: Windows CopyFileW copy-mode file creation.
+"""B27 focused benchmark: native Windows copy-mode file creation.
 
 This is intentionally stdlib-only so it can run on a bare Windows VM. It
 compares conda's Windows copy fallback shape (``copyfileobj`` with a 4 MiB
-buffer plus ``copystat``) against the B27 shape (``CopyFileW`` plus
-``copystat``) on the same filesystem.
+buffer plus ``copystat``) against ``CopyFileW`` and Python 3.12's
+``_winapi.CopyFile2`` wrapper on the same filesystem.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,6 +19,15 @@ import subprocess
 import time
 from ctypes import wintypes
 from pathlib import Path
+
+try:
+    from _winapi import (
+        COPY_FILE_ALLOW_DECRYPTED_DESTINATION,
+        COPY_FILE_FAIL_IF_EXISTS,
+        CopyFile2,
+    )
+except ImportError:
+    CopyFile2 = None
 
 BUFFER_SIZE = 4 * 1024 * 1024
 DEFAULT_CASES = (
@@ -101,6 +111,12 @@ def copyfilew_copy(src: Path, dst: Path) -> None:
     shutil.copystat(src, dst)
 
 
+def copyfile2_copy(src: Path, dst: Path) -> None:
+    flags = COPY_FILE_ALLOW_DECRYPTED_DESTINATION | COPY_FILE_FAIL_IF_EXISTS
+    CopyFile2(str(src), str(dst), flags)
+    shutil.copystat(src, dst)
+
+
 def time_case(src_paths: list[Path], dst_dir: Path, copy_func) -> float:
     reset_dest(dst_dir)
     start = time.perf_counter()
@@ -111,27 +127,40 @@ def time_case(src_paths: list[Path], dst_dir: Path, copy_func) -> float:
 
 def run_case(root: Path, label: str, count: int, size: int, repeats: int) -> dict:
     src_paths = write_source_files(root / "sources" / f"{count}-{size}", count, size)
-    python_times = []
-    copyfilew_times = []
-    for _ in range(repeats):
-        python_times.append(time_case(src_paths, root / "dest-python", python_copy))
-        copyfilew_times.append(
-            time_case(src_paths, root / "dest-copyfilew", copyfilew_copy)
-        )
-    python_median = statistics.median(python_times)
-    copyfilew_median = statistics.median(copyfilew_times)
-    return {
+    copy_functions = [
+        ("python_copy", python_copy),
+        ("copyfilew", copyfilew_copy),
+    ]
+    if CopyFile2 is not None:
+        copy_functions.append(("copyfile2", copyfile2_copy))
+    samples = {name: [] for name, _ in copy_functions}
+    for repeat in range(repeats):
+        start = repeat % len(copy_functions)
+        ordered = copy_functions[start:] + copy_functions[:start]
+        for name, copy_func in ordered:
+            samples[name].append(time_case(src_paths, root / f"dest-{name}", copy_func))
+
+    medians = {name: statistics.median(times) for name, times in samples.items()}
+    result = {
         "label": label,
         "files": count,
         "bytes_per_file": size,
         "total_bytes": count * size,
         "repeats": repeats,
-        "python_copy_seconds": python_median,
-        "copyfilew_seconds": copyfilew_median,
-        "speedup": python_median / copyfilew_median if copyfilew_median else None,
-        "python_copy_samples": python_times,
-        "copyfilew_samples": copyfilew_times,
+        "python_copy_seconds": medians["python_copy"],
+        "copyfilew_seconds": medians["copyfilew"],
+        "speedup": medians["python_copy"] / medians["copyfilew"],
+        "python_copy_samples": samples["python_copy"],
+        "copyfilew_samples": samples["copyfilew"],
     }
+    if CopyFile2 is not None:
+        result.update(
+            copyfile2_seconds=medians["copyfile2"],
+            copyfile2_speedup=medians["python_copy"] / medians["copyfile2"],
+            copyfile2_vs_copyfilew=medians["copyfile2"] / medians["copyfilew"],
+            copyfile2_samples=samples["copyfile2"],
+        )
+    return result
 
 
 def main() -> int:
@@ -151,6 +180,7 @@ def main() -> int:
         "machine": platform.machine(),
         "processor": platform.processor(),
         "python": platform.python_version(),
+        "copyfile2_available": CopyFile2 is not None,
         "volume": fsutil_volume_info(root),
         "cases": [
             run_case(root, label, count, size, args.repeats)
