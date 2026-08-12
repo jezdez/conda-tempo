@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
-| **Status** | Implementation in progress — 22 of 25 Track A PRs merged; 2 awaiting review, 1 with changes requested, none in draft, targeting 26.7 (July) |
+| **Status** | Implementation in progress — 22 of 25 Track A PRs merged and shipped in conda 26.7.0, with 2 awaiting review, 1 awaiting re-review after changes requested, and fresh CI running on all 3 open PRs |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
 | **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -36,13 +36,14 @@
 
 ## Executive Summary
 
-conda's perceived slowness is primarily a startup problem. Before any command
-runs — before the solver is invoked, before any network request is made — conda
-loads 834 Python modules. On Python 3.13, this costs roughly 370 ms. For
-comparison, `uv --version` and `pixi --version` both return in about 12 ms.
+conda's perceived slowness is primarily a startup problem. Before Track A,
+conda loaded 834 Python modules before any command ran — before the solver was
+invoked or any network request was made. On Python 3.13, this cost roughly
+370 ms. In the same measurements, `uv --version` and `pixi --version` both
+returned in about 12 ms.
 
-The perception matters: users experience this delay every time they open a
-terminal (`conda activate`), check a version, or list environments. In a market
+The perception mattered: users experienced this delay every time they opened a
+terminal (`conda activate`), checked a version, or listed environments. In a market
 where Rust-native alternatives are gaining share, this is the single biggest
 contributor to the "conda is slow" narrative.
 
@@ -69,16 +70,15 @@ Profiling reveals two areas responsible for ~80% of the overhead (see
 Track A is twenty-five targeted changes (A1–A24, with A16 cancelled), all
 compatible with Python 3.10+. No new language features, no architectural
 changes, full backward compatibility. Estimated effort: ~400 lines of code.
-Twenty-two are merged. The three remaining open PRs are no longer draft and
-have green required checks. A2/A3 and A11 are mergeable but still need reviewer
-follow-up. A2/A3 has six unresolved review threads, while A11 needs a decision
-on which commands may skip pre- and post-command plugin hooks. A19b has changes
-requested because the replacement record classes do not yet preserve required
-field validation, type validation, and several other compatibility behaviors.
+Twenty-two are merged and shipped in conda 26.7.0. The three remaining PRs are
+open, no longer draft, and rebased onto current `main`. A2/A3 and A11 await
+reviewer decisions after feedback was applied. A19b's compatibility fixes are
+also applied, but Jaime's changes-requested review remains until re-review.
+Fresh CI is running on all three rebased heads.
 
 The following results were measured with `hyperfine --shell=none`:
 
-| Scenario | Today | After fixes (3.13) | Saved | Speedup |
+| Scenario | Pre-Track-A baseline | After fixes (3.13) | Saved | Speedup |
 |---|---|---|---|---|
 | `conda activate` (requests fix + skip plugin hooks) | 371 ms | 85 ms | −286 ms | 4.4× |
 | `conda activate` (skip plugin hooks only) | 371 ms | 142 ms | −229 ms | 2.6× |
@@ -96,7 +96,7 @@ prototyped but not yet runtime-measured.
 
 | Scenario | ms | | Saved | Speedup |
 |:--|--:|:--|--:|--:|
-| Stock 3.13 | 371 | `████████████████████` | | |
+| Stock 26.1.1 (3.13) | 371 | `████████████████████` | | |
 | Skip plugin hooks | 142 | `████████` | −229 ms | 2.6× |
 | + requests fix | 85 | `█████` | −286 ms | 4.4× |
 | uv (ref) | 12 | `█` | | |
@@ -105,7 +105,7 @@ prototyped but not yet runtime-measured.
 
 | Scenario | ms | | Saved | Speedup |
 |:--|--:|:--|--:|--:|
-| Stock 3.13 | 384 | `████████████████████` | | |
+| Stock 26.1.1 (3.13) | 384 | `████████████████████` | | |
 | Fast path | 23 | `█` | −361 ms | 16.7× |
 | uv (ref) | 12 | `█` | | |
 
@@ -135,7 +135,7 @@ Values labeled "measured" were validated with `hyperfine --shell=none`.
 Values labeled "est." are projected from measured per-phase costs. Fix IDs
 (A1–A24) refer to the [implementation roadmap](#4-implementation-roadmap).
 
-| Command | Stock 3.13 (ms) | A1 only (ms) | A6 only (ms) | A1+A6 (ms) | A7 (ms) | Method |
+| Command | Stock 26.1.1 on 3.13 (ms) | A1 only (ms) | A6 only (ms) | A1+A6 (ms) | A7 (ms) | Method |
 |---|---|---|---|---|---|---|
 | `conda activate` | 371 | — | 142 | 85 | — | all measured |
 | `conda --version` | 384 | — | — | — | 23 | measured |
@@ -152,11 +152,14 @@ Values labeled "est." are projected from measured per-phase costs. Fix IDs
 
 ## 1. Motivation
 
+This section describes the pre-Track-A baseline measured with stock conda
+26.1.1 on Python 3.13.
+
 ### 1.1 The competitive landscape
 
 Modern package managers written in Rust (`uv`, `pixi`, `rattler`) start in
-under 15 ms. Users increasingly perceive conda as "slow" — not because of
-solver time, but because of the 300–400 ms it takes just to print `--version`.
+under 15 ms. At the baseline, users perceived conda as "slow" — not because of
+solver time, but because of the 300–400 ms it took just to print `--version`.
 
 ```
 uv --version          12 ms
@@ -164,29 +167,29 @@ pixi --version        12 ms
 conda --version      384 ms   ← 32× slower
 ```
 
-This latency compounds in scripts, CI pipelines, and interactive shell use
+This latency compounded in scripts, CI pipelines, and interactive shell use
 (where `conda activate` runs on every new shell).
 
 ### 1.2 Root cause
 
-conda is a Python CLI application. Its startup time is dominated by four areas:
+At the baseline, conda's startup time was dominated by four areas:
 
 1. CPython interpreter initialization (~20 ms).
-2. Module imports — conda eagerly loads 834 modules before processing any
-   command. 345 of those (41%) are third-party packages not needed for the
+2. Module imports — conda eagerly loaded 834 modules before processing any
+   command. 345 of those (41%) were third-party packages not needed for the
    command being run.
-3. Plugin loading — accessing `context.plugin_manager` triggers loading of all
+3. Plugin loading — accessing `context.plugin_manager` triggered loading of all
    installed plugins (solver, TOS, trust, menuinst), adding 429 modules and
    239 ms even for `conda activate`.
-4. A pathological import chain — `conda.common.serialize.json` imports
+4. A pathological import chain — `conda.common.serialize.json` imported
    `requests.compat.json` instead of stdlib `json`. The `requests.compat`
-   module is a Python 2-era shim that prefers `simplejson` over stdlib `json`,
-   but since `simplejson` is never installed in conda environments, the result
-   is always stdlib `json`. The cost of this indirection is transitively
-   pulling in requests, urllib3, cryptography, ssl, and email (120 modules) on
+   module was a Python 2-era shim that preferred `simplejson` over stdlib `json`.
+   Because `simplejson` was not installed in conda environments, the result was
+   still stdlib `json`. The indirection transitively pulled in requests, urllib3,
+   cryptography, ssl, and email (120 modules) on
    every invocation.
 
-A full rewrite in Rust is not viable. The goal is to make Python start fast
+A full rewrite in Rust was not viable. The goal was to make Python start fast
 enough.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
@@ -259,8 +262,8 @@ Instrumented phase-by-phase measurement of conda's startup on the prototype:
 | `generate_parser()` | 0.2 ms | +0 |
 | Total to parser ready | ~63 ms | 189 modules |
 
-For comparison, stock conda's `generate_parser()` alone takes 157 ms and loads
-836 modules.
+For comparison, stock conda 26.1.1's `generate_parser()` alone took 157 ms and
+loaded 836 modules.
 
 ### 3.2 Real-world command benchmarks (stock conda 26.1.1, Python 3.13)
 
@@ -297,9 +300,10 @@ miniconda3 conda (26.1.1) on Python 3.13. All measurements used
 | uv --version | 12 | `▏` | — |
 
 > [!IMPORTANT]
-> Module counts are nearly identical across all commands (824–864). The startup
-> overhead loads almost everything regardless of which command is invoked. There
-> is virtually no lazy loading today.
+> In the stock conda 26.1.1 baseline, module counts were nearly identical across
+> all commands (824–864). Startup overhead loaded almost everything regardless
+> of which command was invoked. There was virtually no lazy loading in that
+> baseline.
 
 ### 3.3 Startup cost anatomy
 
@@ -388,7 +392,8 @@ dependencies loaded unnecessarily.
 
 ### 3.4 Third-party import breakdown
 
-Of the 834 modules loaded at startup, 345 (41%) are third-party packages:
+Of the 834 modules loaded at startup in the stock 26.1.1 baseline, 345 (41%)
+were third-party packages:
 
 <details>
 <summary>Full third-party module breakdown (click to expand)</summary>
@@ -413,8 +418,8 @@ Of the 834 modules loaded at startup, 345 (41%) are third-party packages:
 </details>
 
 > [!WARNING]
-> All of these are loaded for `conda activate`, even though none are needed by
-> the activate logic.
+> All of these were loaded for `conda activate` in the stock 26.1.1 baseline,
+> even though none were needed by the activate logic.
 
 ```mermaid
 pie title Startup Modules (834 total)
@@ -571,8 +576,8 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | ID | Change | Python req. | Effort | Impact | Status |
 |---|---|---|---|---|---|
 | A1 | Fix `requests.compat.json` import | 3.10+ | 1 line | −120 modules, −45 ms | ✅ [#15866](https://github.com/conda/conda/pull/15866) merged |
-| A2 | Lazy subcommand parser loading | 3.10+ | ~100 lines | −801 modules, −482 ms (isolated ceiling, re-measured 2026-04-21 against post-merge `main`; original pre-Track-A baseline was −505 modules / −142 ms) | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) review feedback outstanding, with six unresolved threads as of 2026-07-20 and green CI |
-| A3 | Deferred plugin discovery in parser | 3.10+ | ~30 lines | included in A2 ceiling above | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) combined with A2, with review feedback outstanding and green CI |
+| A2 | Lazy subcommand parser loading | 3.10+ | ~100 lines | −801 modules, −482 ms (isolated ceiling re-measured 2026-04-21 against post-merge `main`, original pre-Track-A baseline was −505 modules / −142 ms) | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) feedback applied, fresh CI running, awaiting Ken/Jaime re-review |
+| A3 | Deferred plugin discovery in parser | 3.10+ | ~30 lines | included in A2 ceiling above | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) combined with A2, fresh CI running, awaiting re-review |
 | A4 | Deferred imports in `main_*.py` / `notices/core.py` | 3.10+ | ~20 lines | −387 to −615 modules per subcommand | ✅ [#15879](https://github.com/conda/conda/pull/15879) merged |
 | A5 | Ruff `TID253` static import guard | 3.10+ | config | prevents regressions | ✅ [#15869](https://github.com/conda/conda/pull/15869) merged |
 | A5b | CodSpeed startup benchmarks | 3.10+ | done | tracks import/init cost | ✅ [#15850](https://github.com/conda/conda/pull/15850) merged |
@@ -581,7 +586,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A8 | Defer heavy imports in `exceptions.py` | 3.10+ | ~20 lines | −71 modules, −23 ms | ✅ [#15880](https://github.com/conda/conda/pull/15880) merged |
 | A9 | Defer `concurrent.futures`/`threading` in `common/io.py` | 3.10+ | ~10 lines | −45 modules, −12 ms | ✅ [#15881](https://github.com/conda/conda/pull/15881) merged |
 | A10 | Lazy `import ruamel.yaml` in `serialize/yaml.py` | 3.10+ | ~5 lines | −32 modules, ~0 ms warm | ✅ [#15882](https://github.com/conda/conda/pull/15882) merged |
-| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 💬 [#15883](https://github.com/conda/conda/pull/15883) awaiting a decision on pre- and post-command hook eligibility, with green CI |
+| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 💬 [#15883](https://github.com/conda/conda/pull/15883) contract documented, fresh CI running, awaiting Jaime's decision |
 | A12 | Eliminate redundant `context.__init__` in `main_subshell` | 3.10+ | ~15 lines | −1 ms | ✅ [#15885](https://github.com/conda/conda/pull/15885) merged |
 | A13 | Speed up `_expand_search_path` and `custom_expandvars` (fast-path + lazy `os.environ` lookup, `os.scandir`) | 3.10+ | ~30 lines | ~−2 ms per process (~5.1× cheaper per `_expand_search_path` call); CodSpeed: ×8 on `test_context_init`, −30 to −60 ms on subcommand benches via shared `custom_expandvars()` | ✅ [#15886](https://github.com/conda/conda/pull/15886) merged |
 | A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | ✅ [#15887](https://github.com/conda/conda/pull/15887) merged |
@@ -590,7 +595,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A17 | Start `ContextStack` with single slot | 3.10+ | ~5 lines | code quality | ✅ [#15889](https://github.com/conda/conda/pull/15889) merged |
 | A18 | Pre-compile regexes in hot parsers | 3.10+ | ~30 lines | −41 ms / 50k specs (1.3×) | ✅ [#15890](https://github.com/conda/conda/pull/15890) merged |
 | A19a | Drop `ChannelType` metaclass (`__new__` + `@cache` on `from_value`) | 3.10+ | ~90 lines | code quality (unlocks A19b review) | ✅ [#15942](https://github.com/conda/conda/pull/15942) merged |
-| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | 3.2× faster init, 5.6× faster dump, −913 ms/50k records, −15 MiB | 🔴 [#15916](https://github.com/conda/conda/pull/15916) changes requested on validation and compatibility behavior, with green CI |
+| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | 3.2× faster init, 5.6× faster dump, −913 ms/50k records, −15 MiB | 🔴 [#15916](https://github.com/conda/conda/pull/15916) compatibility feedback applied, fresh CI running, awaiting Jaime's re-review |
 | A20a | Replace `deepcopy` with dict comprehension in solver | 3.10+ | ~5 lines | −0.6 ms/solve (deepcopy 11.7×) | ✅ [#15917](https://github.com/conda/conda/pull/15917) merged |
 | A20b | Enable ruff `G004`; use lazy log formatting across codebase | 3.10+ | ~90 lines | ~6 µs/startup (correctness fix) | ✅ [#15891](https://github.com/conda/conda/pull/15891) merged |
 | A21 | Optimize `PrefixData` I/O (`read_bytes`+`json.loads`) | 3.10+ | ~50 lines | −31 ms / 2k pkgs (1.5×) | ✅ [#15892](https://github.com/conda/conda/pull/15892) merged |
@@ -607,9 +612,9 @@ in the [Track C](track-c-future.md).
 
 > **1 line** · `serialize/json.py` · −120 modules · −45 ms
 
-`conda/common/serialize/json.py` imports `requests.compat.json` instead of
-stdlib `json`. The `requests.compat` module is a Python 2-era compatibility
-shim whose JSON handling does:
+Before A1, `conda/common/serialize/json.py` imported `requests.compat.json`
+instead of stdlib `json`. The `requests.compat` module is a Python 2-era
+compatibility shim whose JSON handling does:
 
 ```python
 try:
@@ -618,9 +623,9 @@ except ImportError:
     import json
 ```
 
-Since `simplejson` is never installed in conda environments, this always
-resolves to stdlib `json`. But importing `requests.compat` to get there also
-unconditionally loads `urllib3`, `chardet`/`charset_normalizer`, and a chain of
+Since `simplejson` was not installed in conda environments, this always
+resolved to stdlib `json`. Importing `requests.compat` to get there also
+unconditionally loaded `urllib3`, `chardet`/`charset_normalizer`, and a chain of
 ~120 other modules:
 
 ```
@@ -628,8 +633,8 @@ requests (67 mods, 61 ms) → urllib3 (29 mods, 42 ms) → cryptography (30 mods
   → charset_normalizer (9 mods) → email.* (15 mods)
 ```
 
-This happens during `import conda.base.context`, meaning every conda command
-pays a 45 ms, 120-module tax for network libraries it hasn't asked for.
+This happened during `import conda.base.context`, meaning every conda command
+paid a 45 ms, 120-module tax for network libraries it had not asked for.
 
 > [!TIP]
 > Replacing `from requests.compat import json` with `import json` has zero
@@ -746,7 +751,7 @@ for optional local profiling.
 
 > **~10 lines** · `activate.py` · −429 modules · −239 ms
 
-In `conda/activate.py`, lines 212–214 call:
+Before A6, `conda/activate.py` called:
 
 ```python
 context.plugin_manager.invoke_pre_commands(self.command)
@@ -754,7 +759,7 @@ context.plugin_manager.invoke_pre_commands(self.command)
 context.plugin_manager.invoke_post_commands(self.command)
 ```
 
-The first access to `context.plugin_manager` triggers loading of all installed
+The first access to `context.plugin_manager` triggered loading of all installed
 plugins: `conda_libmamba_solver` + `libmambapy` (24 modules),
 `conda_anaconda_tos` + `rich` + `pydantic` (106 modules),
 `conda_content_trust` (8 modules), `menuinst` (11 modules),
@@ -762,7 +767,7 @@ plugins: `conda_libmamba_solver` + `libmambapy` (24 modules),
 conda modules — 429 modules totaling 239 ms, for a command that only generates
 shell variable assignments.
 
-The fix is to check whether any pre/post command hooks are actually registered
+The fix was to check whether any pre/post command hooks were actually registered
 before triggering full plugin loading, or to skip the hooks entirely for
 shell-integration commands (`shell.*`) which have no meaningful pre/post
 behavior.
@@ -810,14 +815,15 @@ re-import heavy dependencies. Per-subcommand savings: −387 to −615 modules
 (−107 to −272 ms). The largest win is `main_env`, which drops from +647
 modules (282 ms) to just +32 modules (10 ms).
 
-A8–A10 target the next layer of the import chain. PoC measurements show:
+A8–A10 targeted the next layer of the import chain. PoC measurements showed:
 A8 defers 71 modules (23 ms) from `exceptions.py` (complementary to A2/A3),
 A9 defers 45 modules (12 ms) of `concurrent.futures`/`threading` from
 `common/io.py`, and A10 removes 32 `ruamel.yaml` modules from the `context`
 import path (negligible wall-clock on warm cache, but valuable for module
-budgets and cold-cache scenarios). A11 extends the A6 pattern to `conda run`,
-which only needs 249 modules (context + prefix_data + subprocess) but currently
-loads 831 — a measured 3.0× speedup (352 ms → 117 ms).
+budgets and cold-cache scenarios). A11 extends the A6 pattern to `conda run`.
+The measured baseline loaded 831 modules where the command only needed 249
+(context + prefix_data + subprocess), with a measured 3.0× speedup
+(352 ms → 117 ms).
 
 A1 alone saves 57 ms in the context init phase, but for subshell commands the
 end-to-end impact is smaller because `requests` is re-loaded via plugin
@@ -1103,9 +1109,9 @@ imported only by `conda config --describe` would cut `context.py` from
 
 > **~20 lines** · `conda/base/context.py` + `conda/cli/main.py` · **−3.3 ms** (3× pattern, measured)
 
-Commands like `conda activate`, `conda run`, and `conda --version` don’t
-need user config from `.condarc`.  Currently they still pay the full cost
-of `_set_search_path(SEARCH_PATH)` (config file discovery + YAML parsing).
+Commands like `conda activate` and `conda run` don’t need all user config from
+`.condarc`. At the time of this proposal they still paid the full cost of
+`_set_search_path(SEARCH_PATH)` (config file discovery + YAML parsing).
 
 A lightweight init mode that skips `_set_search_path` (or uses a minimal
 path like `($CONDARC,)`) would avoid all file system work for these
@@ -1573,11 +1579,12 @@ alone saves ~2.1 seconds per 50k records (3.2× faster init, 5.6× faster dump).
 Combined startup + runtime estimate for `conda install` at solver scale:
 **~2.5 seconds saved**.
 
-Twenty-two PRs are merged (A1, A4, A5, A5b, A6, A7, A8, A9, A10, A12, A13,
-A14, A15, A17, A18, A19a, A20a, A20b, A21, A22, A23, A24). Three open PRs
-remain. A2/A3 and A11 are mergeable with green required checks but need reviewer
-follow-up. A19b has green required checks and changes requested over validation
-and compatibility regressions.
+Twenty-two PRs are merged and shipped in conda 26.7.0 (A1, A4, A5, A5b, A6,
+A7, A8, A9, A10, A12, A13, A14, A15, A17, A18, A19a, A20a, A20b, A21, A22,
+A23, A24). Three open PRs remain. A2/A3 and A11 need reviewer follow-up after
+feedback was applied. A19b's compatibility fixes are applied, but Jaime's
+changes-requested review remains until re-review. Fresh CI is running on all
+three rebased heads.
 A13 ([#15886](https://github.com/conda/conda/pull/15886)) speeds up
 `_expand_search_path` and `custom_expandvars` directly (~5.1× faster
 per call, ~2 ms per process, plus ×8 on CodSpeed's `test_context_init`
@@ -1589,8 +1596,8 @@ research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
 [Track B](track-b-transaction.md).
 
-Track A implementation is underway — twenty-two PRs merged, two awaiting
-reviewer decisions, and one with changes requested.
+Track A implementation is underway — twenty-two PRs shipped in conda 26.7.0,
+two awaiting reviewer decisions, and one awaiting re-review after changes requested.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
 
@@ -1600,6 +1607,7 @@ reviewer decisions, and one with changes requested.
 
 | Date | Change |
 |---|---|
+| 2026-08-12 | **The remaining Track A PRs were refreshed after conda 26.7.0 shipped.** All 22 merged Track A PRs are included in 26.7.0. A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916) were rebased onto current `main` without conflicts and remain mergeable. Feedback is applied on all three, and fresh CI is running. A2/A3 and A11 await reviewer decisions. A19b still carries Jaime's changes-requested review pending re-review of the compatibility fixes. No new release target is committed. |
 | 2026-07-20 | **Open Track A PR review completed.** The merged count remains **22 of 25**. A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable with green required checks and six unresolved review threads covering deprecation dates, release-note wording, built-in command registration, and duplicated help text. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable with green required checks and needs a decision on which commands may skip pre- and post-command plugin hooks. A19b [#15916](https://github.com/conda/conda/pull/15916) has changes requested because required-field validation, type validation, unknown-keyword handling, timestamp fallback, cached identity invalidation, and documentation compatibility are not yet preserved. None of the three can merge without follow-up. |
 | 2026-07-09 | **A22 [#15893](https://github.com/conda/conda/pull/15893) and A9 [#15881](https://github.com/conda/conda/pull/15881) merged.** A22 landed on 2026-07-08 22:21 UTC (merge commit `ae08fed790`), and A9 landed on 2026-07-09 16:59 UTC (merge commit `5b00e3a231`). Track A is now **22 of 25 PRs merged**. Three PRs remain open and no longer draft: A2/A3 [#15868](https://github.com/conda/conda/pull/15868) and A11 [#15883](https://github.com/conda/conda/pull/15883) are review-required with green CI; A19b [#15916](https://github.com/conda/conda/pull/15916) is review-required with one failing Bencher report over an otherwise green test matrix. Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) updated with the new merged count and status table. |
 | 2026-06-30 | **Open Track A PR sweep completed.** Rebased/refreshed A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A9 [#15881](https://github.com/conda/conda/pull/15881), A11 [#15883](https://github.com/conda/conda/pull/15883), A22 [#15893](https://github.com/conda/conda/pull/15893), and A19b [#15916](https://github.com/conda/conda/pull/15916) against current `main`. All five open PRs are `MERGEABLE`, review-blocked by status, and have green CI. Follow-up fixes: A2/A3 now forces lazy plugin discovery for built-in command introspection and accepts the current deprecation-warning category; A19b restores missing-channel fallback semantics and pins the protected-removal integration test to `defaults` because the classic `conda-build` solve is too slow under conda-forge CI; A22 now requires explicit `conda.plugins.types` import after @kenodegard's review. Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) updated with the final open-PR state. |
