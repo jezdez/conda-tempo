@@ -7,7 +7,8 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
-| **Status** | Implementation in progress — 22 of 25 Track A PRs merged and shipped in conda 26.7.0, with 2 awaiting review, 1 awaiting re-review after changes requested, and fresh CI running on all 3 open PRs |
+| **Last refreshed** | September 1, 2026 |
+| **Status** | Implementation in progress — 22 of 25 Track A PRs merged and shipped in conda 26.7.0. The 3 open PRs are mergeable and based on current `main` (`f79624e4a`). A2/A3 and A11 are review required, A19b has changes requested, and hosted checks are running on all 3 heads. |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
 | **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -69,12 +70,15 @@ Profiling reveals two areas responsible for ~80% of the overhead (see
 
 Track A is twenty-five targeted changes (A1–A24, with A16 cancelled), all
 compatible with Python 3.10+. No new language features, no architectural
-changes, full backward compatibility. Estimated effort: ~400 lines of code.
-Twenty-two are merged and shipped in conda 26.7.0. The three remaining PRs are
-open, no longer draft, and rebased onto current `main`. A2/A3 and A11 await
-reviewer decisions after feedback was applied. A19b's compatibility fixes are
-also applied, but Jaime's changes-requested review remains until re-review.
-Fresh CI is running on all three rebased heads.
+changes, and full backward compatibility as a merge requirement. Estimated
+effort: ~400 lines of code. Twenty-two are merged and shipped in conda 26.7.0.
+The three remaining PRs are open, no longer draft, mergeable, and based on
+current `main` (`f79624e4a`). A2/A3
+(`3cf12e63c4d16894a2fa5339c2db6da67f4a5972`) and A11
+(`199111d66b888e8197f8b4d99a30a0073c326348`) are review required. A19b
+(`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`) has changes requested because
+public-API and validation differences still need code changes or narrower
+claims. Hosted checks are running on all three refreshed heads.
 
 The following results were measured with `hyperfine --shell=none`:
 
@@ -540,28 +544,32 @@ A18–A21 are runtime/operation-scale optimizations that stack on top:
 
 | Phase | Optimizations | At solver scale (50k records) | At `conda list` scale (2k) |
 |---|---|---|---|
-| Record instantiation | A19 | −913 ms | −37 ms |
-| Record serialization | A19 | −1,231 ms | −49 ms |
+| Record instantiation | A19 | −913 ms (April 2026 extrapolation) | −37 ms (April 2026 extrapolation) |
+| Record serialization | A19 | −1,231 ms (April 2026 extrapolation) | −49 ms (April 2026 extrapolation) |
 | Spec parsing | A18 | −41 ms | — |
 | PrefixData I/O | A21 | — | −31 ms |
 | Solver deepcopy | A20a | −0.6 ms | — |
 
-**Stacked estimates per command type (startup + runtime):**
+**Stacked estimates per command type (startup + runtime, retaining the April
+2026 A19 extrapolations):**
 
 | Command | Startup saved | Runtime saved | Total saved |
 |---|---|---|---|
 | `conda activate` | −286 ms | — | **−286 ms** |
 | `conda --version` | −361 ms | — | **−361 ms** |
 | `conda run` | −246 ms | — | **−246 ms** |
-| `conda list` (2k pkgs) | −246 ms | −117 ms (A19+A21) | **~−363 ms** |
-| `conda install` (solver, 50k) | −246 ms | −2,186 ms (A19+A18+A20a) | **~−2,432 ms** |
-| `conda update --all` (solver, 50k) | −246 ms | −2,186 ms (A19+A18+A20a) | **~−2,432 ms** |
+| `conda list` (2k pkgs) | −246 ms | −117 ms (historical A19 estimate + A21) | **~−363 ms** |
+| `conda install` (solver, 50k) | −246 ms | −2,186 ms (historical A19 estimate + A18 + A20a) | **~−2,432 ms** |
+| `conda update --all` (solver, 50k) | −246 ms | −2,186 ms (historical A19 estimate + A18 + A20a) | **~−2,432 ms** |
 
-Solver-path commands benefit the most: A19 init+dump savings (−2,144 ms
-at 50k records) dominate the runtime phase. Production A19 numbers
-measured against real Entity from `main` (median of 5 rounds, Python 3.13
-macOS ARM64): 3.2× faster init (26.3 → 8.1 µs), 5.6× faster dump
-(29.9 → 5.3 µs). See [#15916](https://github.com/conda/conda/pull/15916).
+The A19-derived values in both tables preserve the April 2026 report. They are
+arithmetic extrapolations from a microbenchmark, not end-to-end command
+measurements. The exact fixture definition, harness, baseline commit, raw
+samples, timing setup, and memory accounting were not preserved, so the exact
+figures cannot now be reproduced. An independent comparison on 2026-09-01
+confirmed faster construction and `dump()` but measured different ratios. See
+the [A19 section](#a19-replace-auxlibentity-with-dataclassslotstrue) for the
+historical tables, current comparison, and limitations.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
 
@@ -569,15 +577,16 @@ macOS ARM64): 3.2× faster init (26.3 → 8.1 µs), 5.6× faster dump
 
 ## 4. Implementation roadmap
 
-All changes are Python 3.10+ compatible. No new syntax, no architectural
-changes, backward compatible. PEP 810 `lazy import` and the related Python
-3.15 work live in the [Track C](track-c-future.md).
+All changes target Python 3.10+ without new syntax or architectural changes.
+Backward compatibility remains a merge requirement. A19b still has public-API
+and validation differences to address. PEP 810 `lazy import` and the related
+Python 3.15 work live in the [Track C](track-c-future.md).
 
 | ID | Change | Python req. | Effort | Impact | Status |
 |---|---|---|---|---|---|
 | A1 | Fix `requests.compat.json` import | 3.10+ | 1 line | −120 modules, −45 ms | ✅ [#15866](https://github.com/conda/conda/pull/15866) merged |
-| A2 | Lazy subcommand parser loading | 3.10+ | ~100 lines | −801 modules, −482 ms (isolated ceiling re-measured 2026-04-21 against post-merge `main`, original pre-Track-A baseline was −505 modules / −142 ms) | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) feedback applied, fresh CI running, awaiting Ken/Jaime re-review |
-| A3 | Deferred plugin discovery in parser | 3.10+ | ~30 lines | included in A2 ceiling above | 🛠️ [#15868](https://github.com/conda/conda/pull/15868) combined with A2, fresh CI running, awaiting re-review |
+| A2 | Lazy subcommand parser loading | 3.10+ | ~100 lines | −801 modules, −482 ms (isolated ceiling re-measured 2026-04-21 against post-merge `main`, original pre-Track-A baseline was −505 modules / −142 ms) | 🟡 [#15868](https://github.com/conda/conda/pull/15868) `3cf12e63c4d16894a2fa5339c2db6da67f4a5972`, mergeable and review required, hosted checks running |
+| A3 | Deferred plugin discovery in parser | 3.10+ | ~30 lines | included in A2 ceiling above | 🟡 [#15868](https://github.com/conda/conda/pull/15868) combined with A2, same head and hosted-check state |
 | A4 | Deferred imports in `main_*.py` / `notices/core.py` | 3.10+ | ~20 lines | −387 to −615 modules per subcommand | ✅ [#15879](https://github.com/conda/conda/pull/15879) merged |
 | A5 | Ruff `TID253` static import guard | 3.10+ | config | prevents regressions | ✅ [#15869](https://github.com/conda/conda/pull/15869) merged |
 | A5b | CodSpeed startup benchmarks | 3.10+ | done | tracks import/init cost | ✅ [#15850](https://github.com/conda/conda/pull/15850) merged |
@@ -586,7 +595,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A8 | Defer heavy imports in `exceptions.py` | 3.10+ | ~20 lines | −71 modules, −23 ms | ✅ [#15880](https://github.com/conda/conda/pull/15880) merged |
 | A9 | Defer `concurrent.futures`/`threading` in `common/io.py` | 3.10+ | ~10 lines | −45 modules, −12 ms | ✅ [#15881](https://github.com/conda/conda/pull/15881) merged |
 | A10 | Lazy `import ruamel.yaml` in `serialize/yaml.py` | 3.10+ | ~5 lines | −32 modules, ~0 ms warm | ✅ [#15882](https://github.com/conda/conda/pull/15882) merged |
-| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 💬 [#15883](https://github.com/conda/conda/pull/15883) contract documented, fresh CI running, awaiting Jaime's decision |
+| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 🟡 [#15883](https://github.com/conda/conda/pull/15883) `199111d66b888e8197f8b4d99a30a0073c326348`, mergeable and review required, hosted checks running |
 | A12 | Eliminate redundant `context.__init__` in `main_subshell` | 3.10+ | ~15 lines | −1 ms | ✅ [#15885](https://github.com/conda/conda/pull/15885) merged |
 | A13 | Speed up `_expand_search_path` and `custom_expandvars` (fast-path + lazy `os.environ` lookup, `os.scandir`) | 3.10+ | ~30 lines | ~−2 ms per process (~5.1× cheaper per `_expand_search_path` call); CodSpeed: ×8 on `test_context_init`, −30 to −60 ms on subcommand benches via shared `custom_expandvars()` | ✅ [#15886](https://github.com/conda/conda/pull/15886) merged |
 | A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | ✅ [#15887](https://github.com/conda/conda/pull/15887) merged |
@@ -595,7 +604,7 @@ changes, backward compatible. PEP 810 `lazy import` and the related Python
 | A17 | Start `ContextStack` with single slot | 3.10+ | ~5 lines | code quality | ✅ [#15889](https://github.com/conda/conda/pull/15889) merged |
 | A18 | Pre-compile regexes in hot parsers | 3.10+ | ~30 lines | −41 ms / 50k specs (1.3×) | ✅ [#15890](https://github.com/conda/conda/pull/15890) merged |
 | A19a | Drop `ChannelType` metaclass (`__new__` + `@cache` on `from_value`) | 3.10+ | ~90 lines | code quality (unlocks A19b review) | ✅ [#15942](https://github.com/conda/conda/pull/15942) merged |
-| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | 3.2× faster init, 5.6× faster dump, −913 ms/50k records, −15 MiB | 🔴 [#15916](https://github.com/conda/conda/pull/15916) compatibility feedback applied, fresh CI running, awaiting Jaime's re-review |
+| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | September comparison: 1.64× faster init and 6.08× faster dump. April scale and memory figures are historical. | 🔴 [#15916](https://github.com/conda/conda/pull/15916) `65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`, mergeable with changes requested, hosted checks running, compatibility gaps remain |
 | A20a | Replace `deepcopy` with dict comprehension in solver | 3.10+ | ~5 lines | −0.6 ms/solve (deepcopy 11.7×) | ✅ [#15917](https://github.com/conda/conda/pull/15917) merged |
 | A20b | Enable ruff `G004`; use lazy log formatting across codebase | 3.10+ | ~90 lines | ~6 µs/startup (correctness fix) | ✅ [#15891](https://github.com/conda/conda/pull/15891) merged |
 | A21 | Optimize `PrefixData` I/O (`read_bytes`+`json.loads`) | 3.10+ | ~50 lines | −31 ms / 2k pkgs (1.5×) | ✅ [#15892](https://github.com/conda/conda/pull/15892) merged |
@@ -1184,9 +1193,9 @@ regex every call.
 
 #### A19. Replace `auxlib.Entity` with `@dataclass(slots=True)`
 
-> Split on 2026-04-21 into **A19a** (Channel metaclass cleanup, [#15942](https://github.com/conda/conda/pull/15942)) and **A19b** (record dataclass migration, [#15916](https://github.com/conda/conda/pull/15916)) after review feedback that the combined diff was too large. The two PRs are independent and the numbers below all come from A19b.
+> Split on 2026-04-21 into **A19a** (Channel metaclass cleanup, [#15942](https://github.com/conda/conda/pull/15942)) and **A19b** (record dataclass migration, [#15916](https://github.com/conda/conda/pull/15916)) after review feedback that the combined diff was too large. The two PRs are independent. The April tables and September independent comparison below come from A19b.
 
-> **~600 lines** · `models/records.py` · 3.2× faster instantiation, 5.6× faster dump, −15 MiB at 50k records
+> **~600 lines** · `models/records.py` · September independent comparison: 1.64× faster instantiation and 6.08× faster dump. April timing, scale, and memory figures are retained below as historical measurements.
 
 **Problem:** The record model classes (`PackageRecord`, `PrefixRecord`,
 `PackageCacheRecord`, `SolvedRecord`) inherit from `auxlib.Entity`, a
@@ -1195,15 +1204,34 @@ the `EntityType` metaclass (`__new__` / `__init__` collecting fields),
 `Entity.__init__()` iterating all fields with `setattr` (triggering
 `Field.__set__` type coercion), and `self.validate()`.
 
-**Production measurement** (50,000 iterations, realistic 14-field repodata
-input, median of 5 rounds, Python 3.13 macOS ARM64):
+**Historical measurement recorded on 2026-04-14.** The April report described
+50,000 iterations with a realistic 14-field repodata input, median of 5 rounds,
+Python 3.13, and macOS ARM64:
 
 | Operation | Entity | Dataclass | Speedup |
 |---|---|---|---|
 | Instantiation | 26.3 µs each | 8.1 µs each | **3.2×** |
 | `dump()` serialization | 29.9 µs each | 5.3 µs each | **5.6×** |
 
-**At scale:**
+The exact fixture definition, harness, baseline commit, raw samples, timing
+setup, and memory accounting were not preserved. The table documents what was
+reported in April rather than a result that can now be reproduced exactly.
+
+**Independent comparison on 2026-09-01.** A common 14-field fixture was run
+for 50,000 iterations, taking the median of 5 rounds on Python 3.13 and macOS
+ARM64. It compared current `main` (`f79624e4a`) with the rebased A19b code at
+`f685ae953`, which is carried unchanged by the current head
+`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`:
+
+| Operation | Current `main` | Rebased A19b | Result |
+|---|---|---|---|
+| Instantiation | 12.065 µs each | 7.365 µs each | **1.64× faster** |
+| `dump()` serialization | 13.841 µs each | 2.276 µs each | **6.08× faster** |
+
+This confirms the performance direction but does not reproduce the exact April
+ratios.
+
+**Historical April extrapolation at scale:**
 
 | Scenario | Entity | Dataclass | Saved |
 |---|---|---|---|
@@ -1212,7 +1240,7 @@ input, median of 5 rounds, Python 3.13 macOS ARM64):
 | 50,000 records (solver/repodata) init | 1,317 ms | 404 ms | **−913 ms** |
 | 50,000 records (solver/repodata) dump | 1,495 ms | 264 ms | **−1,231 ms** |
 
-**Memory** (50k records, `tracemalloc`):
+**Historical April memory measurement** (50k records, `tracemalloc`):
 
 | Scenario | Entity | Dataclass | Saving |
 |---|---|---|---|
@@ -1220,11 +1248,15 @@ input, median of 5 rounds, Python 3.13 macOS ARM64):
 | Realistic duplication (~5k pkgs, 3 channels) | 794 bytes/rec | 483 bytes/rec | **39% less** |
 | Realistic total | 38.8 MiB | 23.6 MiB | **saves 15 MiB** |
 
-**CodSpeed caveat:** the PR's CodSpeed report flags `test_update[libmamba-update]`
-as −28%. This is a known flaky benchmark caused by CodSpeed's "Different runtime
-environments" warning; the same number appears on #15887 (A14), which does not
-touch records or channels at all. Treat the wall-clock table above as the real
-signal.
+Independent `tracemalloc` comparisons changed materially depending on whether
+source strings and interned values were included. No current memory percentage
+or total saving is claimed. The historical scale rows are arithmetic
+extrapolations from the April per-record timings, not end-to-end command
+measurements.
+
+The April CodSpeed −28% result and the latest pre-rebase Bencher alerts did not
+directly benchmark record construction or `dump()`. Neither result validates
+the A19b timing or memory figures.
 
 **Implementation A19a** ([#15942](https://github.com/conda/conda/pull/15942)):
 drop the `ChannelType` metaclass. Single-arg `Channel(value)` caching and
@@ -1239,41 +1271,73 @@ kept one release cycle as a `deprecated.constant` aliased to
 **Implementation A19b** ([#15916](https://github.com/conda/conda/pull/15916)):
 replaced all four Entity-based record classes with
 `@dataclass(slots=True, init=False, eq=False, repr=False)`:
+
 - Custom `__init__` with alias resolution (`build_string` → `build`,
   `schannel` → `channel`, `filename` → `fn`)
 - Unified `FIELD_RESOLVERS` registry for coercion and derivation
   (type conversion + deriving `channel`/`fn`/`subdir` from `url`)
 - `DUMP_TRANSFORMS` registry for serialization-time conversions
 - `sys.intern()` on high-cardinality identity strings (`name`,
-  `version`, `build`, `subdir`) for memory savings
+  `version`, `build`, `subdir`) to reuse identity strings
 - `_pkey`/`__hash__`/`__eq__` preserved for solver compatibility
-- `__getitem__`/`get()`/`__contains__` for dict-like access compat
+- `__getitem__` and `get()` for partial dict-like access
 - `dump()`, `from_objects()`, `from_json()`, `load()` as explicit methods
 - `Dumpable` protocol for type-safe nested serialization
+- `indexed_timestamp` seconds normalization, millisecond serialization, and
+  no fallback to `date`, matching current `main`
+
+**Compatibility status on 2026-09-01:** the broad "same public API" and
+explicit `__contains__` claims are not correct. Remaining differences include:
+
+- Dict-like methods from `Entity` are absent: `__contains__`, `__setitem__`,
+  `__delitem__`, `__iter__`, `items()`, `copy()`, `setdefault()`, and
+  `update()`.
+- `Entity` helpers `json()`, `pretty_json()`, `validate()`, and class-level
+  `fields` are absent. `dump()` returns `dict` rather than `OrderedDict`.
+- A missing key passed to `__getitem__` raises `KeyError` instead of the
+  current-main `AttributeError`.
+- `PackageRecord.package_type` no longer derives `NOARCH_PYTHON` or
+  `NOARCH_GENERIC` from `noarch`.
+- `PrefixRecord(link={...})` leaves a `dict` instead of coercing it to `Link`.
+- Invalid elements in `depends`, `files`, and `requested_specs` are accepted.
+  Arbitrary `noarch` values are also accepted, while invalid platform and
+  package-type values raise different exceptions.
+- `PackageCacheRecord.package_tarball_full_path` and
+  `PackageCacheRecord.extracted_package_dir` default to empty strings even
+  though current `main` requires both fields.
+- `from_objects()` does not read property-backed values from ordinary objects,
+  and assigning `url` after initialization does not derive `channel`, `subdir`,
+  and `fn`.
+
+These differences require code changes or narrower compatibility claims before
+A19b is ready for re-review.
 
 Retained Entity-based classes: `Link`, `PathData`, `PathDataV1`,
 `PathsData` (used by `PrefixRecord` for detailed file metadata).
 
 **Deprecations (A19b):**
-- The eight record-specific `auxlib.Entity` field descriptors
+
+- The nine record-specific `auxlib.Entity` field descriptors
   (`SubdirField`, `ChannelField`, `FilenameField`, `NoarchField`,
-  `TimestampField`, `PackageTypeField`, `_FeaturesField`, `Md5Field`)
-  are re-exported one release cycle via
-  `deprecated.constant(factory=partial(_legacy_field, name))` lazy
-  shims backed by a new `conda/models/_legacy_record_fields.py`, so
-  downstreams that still import them keep working without dragging
-  `boltons.timeutils` into the cold-start graph.
-- `PackageCacheRecord.md5` keeps its auto-compute-on-read behaviour one
-  release cycle via a module-level `property` shim that calls
+  `TimestampField`, `IndexedTimestampField`, `PackageTypeField`,
+  `_FeaturesField`, `Md5Field`) remain importable and are scheduled for
+  deprecation in 27.3 and removal in 27.9 via
+  `deprecated.constant(factory=partial(_legacy_field, name))` lazy shims backed
+  by a new `conda/models/_legacy_record_fields.py`. Downstreams that still
+  import them keep working without dragging `boltons.timeutils` into the
+  cold-start graph. The current-main rebase added `IndexedTimestampField` as
+  the ninth shim.
+- The `PackageCacheRecord.md5` auto-compute-on-read behaviour is scheduled for
+  deprecation in 27.3 and removal in 27.9. A module-level `property` shim calls
   `calculate_md5sum()` and routes the warning through
-  `deprecated.topic("26.9", "27.3", ...)` on unset reads (so conda's
-  deprecations framework — not a raw `warnings.warn` — picks the right
-  category per release). The property is attached *after* the class
-  body because `@dataclass(slots=True)` strips class attributes whose
-  names match inherited fields before allocating slots, which otherwise
-  silently drops an inline `md5` property. The dataclass-slots
-  workaround lives entirely inside `_make_md5_auto_compute_property()`
-  so it doesn't leak helper symbols into `conda.models.records`.
+  `deprecated.topic("27.3", "27.9", ...)` on unset reads, so conda's
+  deprecations framework rather than a raw `warnings.warn` picks the right
+  category per release. The property is attached *after* the class body
+  because `@dataclass(slots=True)` strips class attributes whose names match
+  inherited fields before allocating slots, which otherwise silently drops an
+  inline `md5` property. The dataclass-slots workaround lives entirely inside
+  `_make_md5_auto_compute_property()` so it does not leak helper symbols into
+  `conda.models.records`.
 
 **Related:** #14426 ("More performant conda.models"), #13115
 ("conda list is very slow").
@@ -1550,8 +1614,9 @@ conda's startup overhead is more addressable than previously assumed, and the
 highest-impact fixes do not require Python 3.15.
 
 Twenty-five targeted changes (A1–A24, with A16 cancelled) using only standard
-Python patterns — no new syntax, no architectural changes, full backward
-compatibility. Key results, measured with hyperfine:
+Python patterns, with no new syntax or architectural changes. Full backward
+compatibility remains a merge requirement rather than a completed result for
+all three open PRs. Key results, measured with hyperfine:
 
 | Command | Before | After Track A | Saved | Speedup | Method |
 |---|---|---|---|---|---|
@@ -1574,17 +1639,24 @@ tracer. Stacked, Track A brings `conda run` from 352 ms to an estimated
 compatibility risk.
 
 For solver-path commands (`conda install`, `conda update`), the runtime-scale
-optimizations (A18–A21) add significantly on top of startup savings. A19
-alone saves ~2.1 seconds per 50k records (3.2× faster init, 5.6× faster dump).
-Combined startup + runtime estimate for `conda install` at solver scale:
-**~2.5 seconds saved**.
+optimizations (A18–A21) add significantly on top of startup savings. The April
+report estimated that A19 saved about 2.1 seconds per 50k records and produced
+a combined startup and runtime estimate of about 2.5 seconds for `conda
+install`. Those values are historical extrapolations from an unrecoverable
+microbenchmark setup, not end-to-end command measurements. The September
+independent comparison confirmed the performance direction at 1.64× faster
+initialization and 6.08× faster `dump()`, but no current memory saving or
+combined command total is claimed.
 
 Twenty-two PRs are merged and shipped in conda 26.7.0 (A1, A4, A5, A5b, A6,
 A7, A8, A9, A10, A12, A13, A14, A15, A17, A18, A19a, A20a, A20b, A21, A22,
-A23, A24). Three open PRs remain. A2/A3 and A11 need reviewer follow-up after
-feedback was applied. A19b's compatibility fixes are applied, but Jaime's
-changes-requested review remains until re-review. Fresh CI is running on all
-three rebased heads.
+A23, A24). Three open PRs remain, all mergeable and based on current `main`
+(`f79624e4a`). A2/A3 (`3cf12e63c4d16894a2fa5339c2db6da67f4a5972`)
+and A11 (`199111d66b888e8197f8b4d99a30a0073c326348`) are review required. A19b
+(`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`) has changes requested because
+compatibility differences remain. Hosted checks are running on all three
+heads.
+
 A13 ([#15886](https://github.com/conda/conda/pull/15886)) speeds up
 `_expand_search_path` and `custom_expandvars` directly (~5.1× faster
 per call, ~2 ms per process, plus ×8 on CodSpeed's `test_context_init`
@@ -1596,8 +1668,10 @@ research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
 [Track B](track-b-transaction.md).
 
-Track A implementation is underway — twenty-two PRs shipped in conda 26.7.0,
-two awaiting reviewer decisions, and one awaiting re-review after changes requested.
+Track A implementation is underway. Twenty-two PRs shipped in conda 26.7.0.
+The three current-main PRs are mergeable, A2/A3 and A11 are review required,
+and A19b has changes requested pending compatibility work. Hosted checks are
+running and are not yet green.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
 
@@ -1607,6 +1681,7 @@ two awaiting reviewer decisions, and one awaiting re-review after changes reques
 
 | Date | Change |
 |---|---|
+| 2026-09-01 | **The three remaining Track A PRs were rebased onto current `main` (`f79624e4a`), their news fragments moved to `releases/news/`, and their current claims rechecked.** A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable and review required at `3cf12e63c4d16894a2fa5339c2db6da67f4a5972`. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable and review required at `199111d66b888e8197f8b4d99a30a0073c326348`. A19b [#15916](https://github.com/conda/conda/pull/15916) is mergeable with changes requested at `65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`. The A19b rebase preserved current-main `indexed_timestamp` behavior and added `IndexedTimestampField` as the ninth lazy legacy descriptor shim. Verification confirmed faster construction and `dump()` but found remaining dict-like methods, `Entity` helpers, package-type derivation, `Link` coercion, validation, `from_objects()`, late URL derivation, and required package-cache path differences. The April timing, scale, and memory tables remain as historical measurements and are marked not exactly reproducible. A September independent comparison measured 1.64× faster initialization and 6.08× faster `dump()`, while current memory savings remain unverified. Hosted checks are running, and no new release target is committed. |
 | 2026-08-12 | **The remaining Track A PRs were refreshed after conda 26.7.0 shipped.** All 22 merged Track A PRs are included in 26.7.0. A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916) were rebased onto current `main` without conflicts and remain mergeable. Feedback is applied on all three, and fresh CI is running. A2/A3 and A11 await reviewer decisions. A19b still carries Jaime's changes-requested review pending re-review of the compatibility fixes. No new release target is committed. |
 | 2026-07-20 | **Open Track A PR review completed.** The merged count remains **22 of 25**. A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable with green required checks and six unresolved review threads covering deprecation dates, release-note wording, built-in command registration, and duplicated help text. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable with green required checks and needs a decision on which commands may skip pre- and post-command plugin hooks. A19b [#15916](https://github.com/conda/conda/pull/15916) has changes requested because required-field validation, type validation, unknown-keyword handling, timestamp fallback, cached identity invalidation, and documentation compatibility are not yet preserved. None of the three can merge without follow-up. |
 | 2026-07-09 | **A22 [#15893](https://github.com/conda/conda/pull/15893) and A9 [#15881](https://github.com/conda/conda/pull/15881) merged.** A22 landed on 2026-07-08 22:21 UTC (merge commit `ae08fed790`), and A9 landed on 2026-07-09 16:59 UTC (merge commit `5b00e3a231`). Track A is now **22 of 25 PRs merged**. Three PRs remain open and no longer draft: A2/A3 [#15868](https://github.com/conda/conda/pull/15868) and A11 [#15883](https://github.com/conda/conda/pull/15883) are review-required with green CI; A19b [#15916](https://github.com/conda/conda/pull/15916) is review-required with one failing Bencher report over an otherwise green test matrix. Tracking ticket [#15867](https://github.com/conda/conda/issues/15867) updated with the new merged count and status table. |
