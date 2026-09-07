@@ -1,0 +1,1828 @@
+{
+  "versions": {
+    "memray": "1.20.0",
+    "conda": "26.7.1",
+    "conda-build": "26.7.1",
+    "libmambapy": "2.9.0"
+  },
+  "runs": [
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 0.0007499170023947954,
+      "rss_before_bytes": 102940672,
+      "maxrss_before_bytes": 102940672,
+      "peak_rss_bytes": 103022592,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 0.217382250004448,
+      "rss_before_bytes": 103448576,
+      "maxrss_before_bytes": 103448576,
+      "peak_rss_bytes": 174145536,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 0.2127900839841459,
+      "rss_before_bytes": 102793216,
+      "maxrss_before_bytes": 102793216,
+      "peak_rss_bytes": 176373760,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 0.0006693339964840561,
+      "rss_before_bytes": 100990976,
+      "maxrss_before_bytes": 100990976,
+      "peak_rss_bytes": 101072896,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 0.0006547910161316395,
+      "rss_before_bytes": 102039552,
+      "maxrss_before_bytes": 102039552,
+      "peak_rss_bytes": 102121472,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 0.22046491599758156,
+      "rss_before_bytes": 101269504,
+      "maxrss_before_bytes": 101269504,
+      "peak_rss_bytes": 174735360,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 0.0008740409975871444,
+      "rss_before_bytes": 106348544,
+      "maxrss_before_bytes": 106348544,
+      "peak_rss_bytes": 107790336,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-10000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 0.40777762499055825,
+      "rss_before_bytes": 106545152,
+      "maxrss_before_bytes": 106545152,
+      "peak_rss_bytes": 178388992,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": "base-10000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 46572539,
+      "peak_allocation_sites": [
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 13631488,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 3145728,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 2097152,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages",
+            "run_pipeline"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 524288,
+          "functions": [
+            "__init__",
+            "fill_languages",
+            "run_pipeline",
+            "detect",
+            "apparent_encoding",
+            "text",
+            "repodata"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 0.42560079201939516,
+      "rss_before_bytes": 107413504,
+      "maxrss_before_bytes": 107413504,
+      "peak_rss_bytes": 180879360,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": "base-10000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 46572539,
+      "peak_allocation_sites": [
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 13631488,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 3145728,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 2097152,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 2097152,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages",
+            "run_pipeline"
+          ]
+        },
+        {
+          "bytes": 524288,
+          "functions": [
+            "__init__",
+            "fill_languages",
+            "run_pipeline",
+            "detect",
+            "apparent_encoding",
+            "text",
+            "repodata"
+          ]
+        },
+        {
+          "bytes": 294928,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 0.0011186669871676713,
+      "rss_before_bytes": 107315200,
+      "maxrss_before_bytes": 107315200,
+      "peak_rss_bytes": 108773376,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-10000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 10000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 0.0011746249801944941,
+      "rss_before_bytes": 107937792,
+      "maxrss_before_bytes": 107937792,
+      "peak_rss_bytes": 109395968,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-10000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 10000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 0.4086583750031423,
+      "rss_before_bytes": 105807872,
+      "maxrss_before_bytes": 105807872,
+      "peak_rss_bytes": 182697984,
+      "realized_records": 10001,
+      "output_channels": 1,
+      "capture": "base-10000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 46572539,
+      "peak_allocation_sites": [
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 13631488,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 3145728,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 2097152,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages",
+            "run_pipeline"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        },
+        {
+          "bytes": 1048576,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 524288,
+          "functions": [
+            "__init__",
+            "fill_languages",
+            "run_pipeline",
+            "detect",
+            "apparent_encoding",
+            "text",
+            "repodata"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 0.0006588750111404806,
+      "rss_before_bytes": 101957632,
+      "maxrss_before_bytes": 101957632,
+      "peak_rss_bytes": 102023168,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 2.1379643330001272,
+      "rss_before_bytes": 102563840,
+      "maxrss_before_bytes": 102563840,
+      "peak_rss_bytes": 488472576,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 2.1950785410008393,
+      "rss_before_bytes": 103907328,
+      "maxrss_before_bytes": 103907328,
+      "peak_rss_bytes": 494141440,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 0.0008091669878922403,
+      "rss_before_bytes": 103006208,
+      "maxrss_before_bytes": 103006208,
+      "peak_rss_bytes": 103071744,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 0.0007235410157591105,
+      "rss_before_bytes": 102531072,
+      "maxrss_before_bytes": 102531072,
+      "peak_rss_bytes": 102596608,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 2.2963889590173494,
+      "rss_before_bytes": 103120896,
+      "maxrss_before_bytes": 103120896,
+      "peak_rss_bytes": 483196928,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 0.0008824999968055636,
+      "rss_before_bytes": 108331008,
+      "maxrss_before_bytes": 108331008,
+      "peak_rss_bytes": 109772800,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-100000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 4.0405878750025295,
+      "rss_before_bytes": 107003904,
+      "maxrss_before_bytes": 107003904,
+      "peak_rss_bytes": 496549888,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 250785109,
+      "peak_allocation_sites": [
+        {
+          "bytes": 137375744,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 22020096,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 16777216,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 15728640,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 13631488,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 7864360,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 6291456,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 4.062453916994855,
+      "rss_before_bytes": 106643456,
+      "maxrss_before_bytes": 106643456,
+      "peak_rss_bytes": 493256704,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 250785109,
+      "peak_allocation_sites": [
+        {
+          "bytes": 137375744,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 22020096,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 16777216,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 15728640,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 12582912,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 7864360,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 6291456,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 0.00088900001719594,
+      "rss_before_bytes": 106954752,
+      "maxrss_before_bytes": 106954752,
+      "peak_rss_bytes": 108380160,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-100000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 0.00096750000375323,
+      "rss_before_bytes": 106266624,
+      "maxrss_before_bytes": 106266624,
+      "peak_rss_bytes": 107708416,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-100000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 4.04866937501356,
+      "rss_before_bytes": 105168896,
+      "maxrss_before_bytes": 105168896,
+      "peak_rss_bytes": 489816064,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 250785109,
+      "peak_allocation_sites": [
+        {
+          "bytes": 137375744,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 23145857,
+          "functions": [
+            "_decompress_tables",
+            "_parse_models_bin",
+            "_load_models_data",
+            "load_models",
+            "get_enc_index",
+            "has_model_variants",
+            "fill_languages"
+          ]
+        },
+        {
+          "bytes": 20971520,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 16777216,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 15728640,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 13631488,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 7864360,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 6291456,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 0.0006872499943710864,
+      "rss_before_bytes": 102989824,
+      "maxrss_before_bytes": 102989824,
+      "peak_rss_bytes": 103055360,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "elapsed_seconds": 28.972000042005675,
+      "rss_before_bytes": 102432768,
+      "maxrss_before_bytes": 102432768,
+      "peak_rss_bytes": 3111206912,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 28.673750124988146,
+      "rss_before_bytes": 103301120,
+      "maxrss_before_bytes": 103301120,
+      "peak_rss_bytes": 3430383616,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "elapsed_seconds": 0.0010604580165818334,
+      "rss_before_bytes": 103464960,
+      "maxrss_before_bytes": 103464960,
+      "peak_rss_bytes": 103530496,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 0.0006442500161938369,
+      "rss_before_bytes": 103612416,
+      "maxrss_before_bytes": 103612416,
+      "peak_rss_bytes": 103677952,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "elapsed_seconds": 28.13626937501249,
+      "rss_before_bytes": 101957632,
+      "maxrss_before_bytes": 101957632,
+      "peak_rss_bytes": 3428401152,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 0.0011590000067371875,
+      "rss_before_bytes": 106463232,
+      "maxrss_before_bytes": 106463232,
+      "peak_rss_bytes": 107937792,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-1000000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "elapsed_seconds": 46.547240124986274,
+      "rss_before_bytes": 107544576,
+      "maxrss_before_bytes": 107544576,
+      "peak_rss_bytes": 3438428160,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": "base-1000000-both-1.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 2266426579,
+      "peak_allocation_sites": [
+        {
+          "bytes": 1373634560,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 244318208,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 188940288,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 160432128,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 91226112,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 47185920,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        },
+        {
+          "bytes": 41943064,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 32505856,
+          "functions": [
+            "isiterable",
+            "box",
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 46.776913915993646,
+      "rss_before_bytes": 106807296,
+      "maxrss_before_bytes": 106807296,
+      "peak_rss_bytes": 3422175232,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": "base-1000000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 2266426579,
+      "peak_allocation_sites": [
+        {
+          "bytes": 1373634560,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 243269632,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 195231744,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 160432128,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 85983232,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 47185920,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        },
+        {
+          "bytes": 41943064,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 31457280,
+          "functions": [
+            "isiterable",
+            "box",
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "elapsed_seconds": 0.0012196669995319098,
+      "rss_before_bytes": 106921984,
+      "maxrss_before_bytes": 106921984,
+      "peak_rss_bytes": 108396544,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-1000000-both-2.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 0.000846291019115597,
+      "rss_before_bytes": 106840064,
+      "maxrss_before_bytes": 106840064,
+      "peak_rss_bytes": 108265472,
+      "realized_records": 0,
+      "output_channels": 1,
+      "capture": "pr-1000000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 1000000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "elapsed_seconds": 47.1093288330012,
+      "rss_before_bytes": 107937792,
+      "maxrss_before_bytes": 107937792,
+      "peak_rss_bytes": 3203661824,
+      "realized_records": 1000001,
+      "output_channels": 1,
+      "capture": "base-1000000-both-3.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 2266426579,
+      "peak_allocation_sites": [
+        {
+          "bytes": 1373634560,
+          "functions": [
+            "raw_decode",
+            "decode",
+            "loads",
+            "read",
+            "loads",
+            "fetch_latest_parsed",
+            "_load"
+          ]
+        },
+        {
+          "bytes": 247463936,
+          "functions": [
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__",
+            "__iter__",
+            "<genexpr>"
+          ]
+        },
+        {
+          "bytes": 189988864,
+          "functions": [
+            "__get__",
+            "<lambda>",
+            "validate",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        },
+        {
+          "bytes": 160432128,
+          "functions": [
+            "join",
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data"
+          ]
+        },
+        {
+          "bytes": 87031808,
+          "functions": [
+            "_pkey",
+            "__hash__",
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions"
+          ]
+        },
+        {
+          "bytes": 47185920,
+          "functions": [
+            "_process_raw_repodata",
+            "_load",
+            "load",
+            "iter_records",
+            "_realize",
+            "data",
+            "__len__"
+          ]
+        },
+        {
+          "bytes": 41943064,
+          "functions": [
+            "_realize",
+            "data",
+            "__len__",
+            "_called_from_conda_build",
+            "install_actions",
+            "get_install_actions",
+            "worker"
+          ]
+        },
+        {
+          "bytes": 31457280,
+          "functions": [
+            "isiterable",
+            "box",
+            "__set__",
+            "__init__",
+            "__init__",
+            "__call__",
+            "__getitem__"
+          ]
+        }
+      ]
+    }
+  ]
+}

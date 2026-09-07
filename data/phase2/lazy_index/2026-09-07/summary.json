@@ -1,0 +1,92 @@
+[
+  {
+    "count": 10000,
+    "revision": "base",
+    "memray_peak_MiB": 44.41503429412842,
+    "unprofiled_peak_RSS_MiB": 166.640625,
+    "unprofiled_peak_RSS_range_MiB": [
+      166.078125,
+      168.203125
+    ],
+    "unprofiled_starting_RSS_MiB": 98.03125,
+    "unprofiled_seconds": 0.217382250004448,
+    "realized_records": [
+      10001
+    ]
+  },
+  {
+    "count": 10000,
+    "revision": "pr",
+    "memray_peak_MiB": 0.16305160522460938,
+    "unprofiled_peak_RSS_MiB": 97.390625,
+    "unprofiled_peak_RSS_range_MiB": [
+      96.390625,
+      98.25
+    ],
+    "unprofiled_starting_RSS_MiB": 97.3125,
+    "unprofiled_seconds": 0.0006693339964840561,
+    "realized_records": [
+      0
+    ]
+  },
+  {
+    "count": 100000,
+    "revision": "base",
+    "memray_peak_MiB": 239.1673173904419,
+    "unprofiled_peak_RSS_MiB": 465.84375,
+    "unprofiled_peak_RSS_range_MiB": [
+      460.8125,
+      471.25
+    ],
+    "unprofiled_starting_RSS_MiB": 98.34375,
+    "unprofiled_seconds": 2.1950785410008393,
+    "realized_records": [
+      100001
+    ]
+  },
+  {
+    "count": 100000,
+    "revision": "pr",
+    "memray_peak_MiB": 0.16305160522460938,
+    "unprofiled_peak_RSS_MiB": 97.84375,
+    "unprofiled_peak_RSS_range_MiB": [
+      97.296875,
+      98.296875
+    ],
+    "unprofiled_starting_RSS_MiB": 97.78125,
+    "unprofiled_seconds": 0.0007235410157591105,
+    "realized_records": [
+      0
+    ]
+  },
+  {
+    "count": 1000000,
+    "revision": "base",
+    "memray_peak_MiB": 2161.4328184127808,
+    "unprofiled_peak_RSS_MiB": 3269.578125,
+    "unprofiled_peak_RSS_range_MiB": [
+      2967.078125,
+      3271.46875
+    ],
+    "unprofiled_starting_RSS_MiB": 97.6875,
+    "unprofiled_seconds": 28.673750124988146,
+    "realized_records": [
+      1000001
+    ]
+  },
+  {
+    "count": 1000000,
+    "revision": "pr",
+    "memray_peak_MiB": 0.16305160522460938,
+    "unprofiled_peak_RSS_MiB": 98.734375,
+    "unprofiled_peak_RSS_range_MiB": [
+      98.28125,
+      98.875
+    ],
+    "unprofiled_starting_RSS_MiB": 98.671875,
+    "unprofiled_seconds": 0.0006872499943710864,
+    "realized_records": [
+      0
+    ]
+  }
+]

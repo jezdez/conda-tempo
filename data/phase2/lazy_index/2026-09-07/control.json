@@ -1,0 +1,448 @@
+{
+  "versions": {
+    "memray": "1.20.0",
+    "conda": "26.7.1",
+    "conda-build": "26.7.1",
+    "libmambapy": "2.9.0"
+  },
+  "runs": [
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.0007652910135220736,
+      "rss_before_bytes": 501743616,
+      "maxrss_before_bytes": 501743616,
+      "peak_rss_bytes": 501743616,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.1323365829885006,
+      "rss_before_bytes": 481886208,
+      "maxrss_before_bytes": 481886208,
+      "peak_rss_bytes": 481886208,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.12894466702709906,
+      "rss_before_bytes": 497909760,
+      "maxrss_before_bytes": 497909760,
+      "peak_rss_bytes": 497909760,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.0009549999958835542,
+      "rss_before_bytes": 491667456,
+      "maxrss_before_bytes": 491667456,
+      "peak_rss_bytes": 491667456,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.0008779169875197113,
+      "rss_before_bytes": 483737600,
+      "maxrss_before_bytes": 483737600,
+      "peak_rss_bytes": 483737600,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": false,
+      "preloaded": true,
+      "elapsed_seconds": 0.13672429200960323,
+      "rss_before_bytes": 499351552,
+      "maxrss_before_bytes": 499351552,
+      "peak_rss_bytes": 499351552,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": null,
+      "python_version": "3.14.7"
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.0011525420122779906,
+      "rss_before_bytes": 491356160,
+      "maxrss_before_bytes": 491732992,
+      "peak_rss_bytes": 492732416,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "pr-100000-both-1-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 1,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.2438744579849299,
+      "rss_before_bytes": 494895104,
+      "maxrss_before_bytes": 495386624,
+      "peak_rss_bytes": 496271360,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-1-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.24112849999801256,
+      "rss_before_bytes": 496025600,
+      "maxrss_before_bytes": 496336896,
+      "peak_rss_bytes": 497401856,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-2-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 2,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.0010345829941798002,
+      "rss_before_bytes": 504004608,
+      "maxrss_before_bytes": 504512512,
+      "peak_rss_bytes": 505364480,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "pr-100000-both-2-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "pr",
+      "sha": "33498b5d1d3fbf7c4c822fd7c5419e9268d483e4",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.0010966660047415644,
+      "rss_before_bytes": 476037120,
+      "maxrss_before_bytes": 476069888,
+      "peak_rss_bytes": 477462528,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "pr-100000-both-3-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    },
+    {
+      "revision": "base",
+      "sha": "84de85e38f7009634c29b0162faeb060af0b5891",
+      "count": 100000,
+      "mode": "both",
+      "trial": 3,
+      "profiled": true,
+      "preloaded": true,
+      "elapsed_seconds": 0.2510961660009343,
+      "rss_before_bytes": 474759168,
+      "maxrss_before_bytes": 475037696,
+      "peak_rss_bytes": 476200960,
+      "realized_records": 100001,
+      "output_channels": 1,
+      "capture": "base-100000-both-3-preloaded.bin",
+      "python_version": "3.14.7",
+      "memray_peak_bytes": 170972,
+      "peak_allocation_sites": [
+        {
+          "bytes": 131192,
+          "functions": [
+            "open",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 24675,
+          "functions": [
+            "decode",
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack"
+          ]
+        },
+        {
+          "bytes": 15105,
+          "functions": [
+            "updatecache",
+            "getlines",
+            "findsource",
+            "getframeinfo",
+            "getouterframes",
+            "stack",
+            "_called_from_conda_build"
+          ]
+        }
+      ]
+    }
+  ]
+}
