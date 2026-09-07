@@ -32,7 +32,7 @@
 ## Executive Summary
 
 > _Last refreshed 2026-09-07 to add the B31 lazy-index measurements and
-> 26.x release blocker. The other PR statuses below retain their 2026-08-12
+> follow-up issue. The other PR statuses below retain their 2026-08-12
 > audit date. Headline macOS/Linux end-to-end numbers remain unchanged since
 > the 2026-04-24 stacked runs. B31 has separate method-level measurements._
 
@@ -142,7 +142,7 @@ table unless called out in the notes.
 | B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file 242×, 512 small files 1.54×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is mergeable after a 2026-08-12 restack on current B27. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads |
 | B29 | conda | Aggregate transaction hardlink actions | focused wins did not survive powered W1 | [conda/conda#16371](https://github.com/conda/conda/pull/16371) closed, no end-to-end win |
 | B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) conflicting draft on B28 with seven unresolved review threads |
-| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) open, 26.x release blocker. Companion [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) remains open |
+| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) open. Companion [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) remains open |
 
 B31 is an additional issue, separate from the filed-PR counts below. Its
 [measurements and completion criteria](#b31-preserve-lazy-indexes-during-conda-build-solves)
@@ -2066,7 +2066,7 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 ## B31: Preserve lazy indexes during conda-build solves
 
 **Status:** [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125)
-is open and marked as a 26.x release blocker. The solver-side change is
+is open. The solver-side change is
 [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044),
 tracked by [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045).
 
@@ -2084,7 +2084,7 @@ handling, consistency across recipe solves, and classic-solver behavior.
 
 ### Introduction and release history
 
-This is a longstanding missed memory saving. The history does not establish a new 26.x memory regression. The 26.x blocker designation records the priority of fixing the remaining eager accesses.
+This is a longstanding missed memory saving. The history establishes an incomplete lazy-index optimization dating to 2024.
 
 | Change | Introducing change | First release |
 | --- | --- | --- |
@@ -2094,7 +2094,7 @@ This is a longstanding missed memory saving. The history does not establish a ne
 
 The [original handoff](https://github.com/conda/conda-build/blob/3cba0b912aa6b860f7264af33140302d0c5231cb/conda_build/environ.py#L1295-L1302), [lazy index adoption](https://github.com/conda/conda-build/blob/0ef374916a7ad4754eb480b5ab90beb5f938321c/conda_build/index.py#L118-L145), and [unchanged eager calls in 24.11.0](https://github.com/conda/conda-build/blob/24.11.0/conda_build/environ.py#L1297-L1304) establish that the lazy-index optimization remained incomplete from conda-build 24.11.0 when used with conda 24.9.0 or later. Before that combination, this path already used an eager dictionary.
 
-The solver-side accesses also predate 26.x: the truthiness check shipped in conda-libmamba-solver 22.6.0 via [#30](https://github.com/conda/conda-libmamba-solver/pull/30), and record iteration for local-channel discovery shipped in 23.7.0 via [#194](https://github.com/conda/conda-libmamba-solver/pull/194). [#457](https://github.com/conda/conda-libmamba-solver/pull/457) later moved the iteration into the current helper.
+The solver-side accesses are older: the truthiness check shipped in conda-libmamba-solver 22.6.0 via [#30](https://github.com/conda/conda-libmamba-solver/pull/30), and record iteration for local-channel discovery shipped in 23.7.0 via [#194](https://github.com/conda/conda-libmamba-solver/pull/194). [#457](https://github.com/conda/conda-libmamba-solver/pull/457) later moved the iteration into the current helper.
 
 ### Isolated memory measurements
 
@@ -2184,7 +2184,7 @@ remain local because they can contain runtime filenames.
 
 | Date | Change |
 |---|---|
-| 2026-09-07 | **B31 added as a 26.x release blocker.** Filed [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) for eager truthiness and copying during solver preparation, linked [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) and [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045), and explicitly extended Track B to this Python index handoff. Added three-run Memray and unprofiled RSS measurements plus the already-realized control, with a portable harness and individual results. A complete recipe-build comparison remains outstanding. Historical post-solver and end-to-end totals are unchanged. |
+| 2026-09-07 | **B31 added for lazy-index preservation.** Filed [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) for eager truthiness and copying during solver preparation, linked [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) and [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045), and explicitly extended Track B to this Python index handoff. Added three-run Memray and unprofiled RSS measurements plus the already-realized control, with a portable harness and individual results. A complete recipe-build comparison remains outstanding. Historical post-solver and end-to-end totals are unchanged. |
 | 2026-08-12 | **Live Track B status audit completed.** Seven PRs are merged and five are closed. Six non-draft PRs are green and mergeable. B22 and B28 are mergeable with refreshed CI queued, but none of the nine open non-draft PRs is approved. B4 and the B30 draft conflict. B20 has one unresolved review thread, and B30 has seven. Later the same day, B22 was rebased onto current `main` and B28 was restacked on current B27. Both refreshed heads passed local validation and are waiting for queued CI. Added an explicit caveat that the headline results measure the April experimental stack, not the current seven-merged-PR subset. No benchmarks were rerun. |
 | 2026-07-22 | **B27 native Windows copy follow-up completed.** Updated [#16369](https://github.com/conda/conda/pull/16369) to use CPython's `_winapi.CopyFile2` wrapper on Python 3.12+ and retain `CopyFileW` on Python 3.10 and 3.11. A powered 20-repeat Windows 11 ARM64 NTFS comparison measured `CopyFile2` at **2.72×** for one 64 MiB file, **10.18×** for 512 64 KiB files, and **8.80×** for 2,048 1 KiB files versus conda's Python copy loop. Follow-up 80-repeat probes found `CopyFile2` and `CopyFileW` within about 1 % on the same fixture. The native path passed on Garak under Python 3.10.20, 3.11.15, and 3.13.14. B27 was marked ready for review, leaving B30 as the only implementation draft. The broader Track B status at that point was seven merged, nine ready for review, one draft, and five closed. |
 | 2026-07-20 | **B6 closed after current-main real-package remeasurement.** Re-ran [#15973](https://github.com/conda/conda/pull/15973) after B9c merged using randomized paired macOS W1/W2 and Linux arm64 W1 transactions. K=2 made prepare/verify **14-36 % slower** and K=4 made it **14-40 % slower**; solve + prepare/verify wall time also regressed. Real workloads contained 8,080/36,811 actions dominated by ~24 µs path checks, while only 202/364 prefix rewrites had ~0.5 ms median cost. The executor therefore schedules thousands of tasks too small to amortize its overhead. B6 is now a measured dead end; a future design would need batching or an expensive-action threshold and new end-to-end evidence. Headline Phase-4 numbers are unchanged because their default `verify_threads = 1` left B6 dormant. |
