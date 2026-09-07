@@ -142,9 +142,9 @@ table unless called out in the notes.
 | B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file 242×, 512 small files 1.54×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is mergeable after a 2026-08-12 restack on current B27. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads |
 | B29 | conda | Aggregate transaction hardlink actions | focused wins did not survive powered W1 | [conda/conda#16371](https://github.com/conda/conda/pull/16371) closed, no end-to-end win |
 | B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) conflicting draft on B28 with seven unresolved review threads |
-| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) open. Companion [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) remains open |
+| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) open, with the conda-build fix in [#6126](https://github.com/conda/conda-build/pull/6126). Companion [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) remains open |
 
-B31 is an additional issue, separate from the filed-PR counts below. Its
+B31 and its implementation PR are tracked separately from the dated filed-PR counts below. Its
 [measurements and completion criteria](#b31-preserve-lazy-indexes-during-conda-build-solves)
 cover solver preparation and are not included in the historical end-to-end totals.
 
@@ -2066,7 +2066,8 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 ## B31: Preserve lazy indexes during conda-build solves
 
 **Status:** [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125)
-is open. The solver-side change is
+is open, with its handoff fix proposed in [#6126](https://github.com/conda/conda-build/pull/6126).
+The solver-side change is
 [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044),
 tracked by [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045).
 
@@ -2081,6 +2082,11 @@ The solver PR removes two further eager operations from
 `_called_from_conda_build()` and `_collect_channels_subdirs_from_conda_build()`.
 The coordinated fix must preserve local output-channel discovery, subdir
 handling, consistency across recipe solves, and classic-solver behavior.
+
+The conda-build fix uses the existing lazy `Index.__copy__` implementation
+available in supported conda versions. [conda/conda#16635](https://github.com/conda/conda/pull/16635)
+also makes `Index.copy()` lazy and reduces a supplied lazy index for the classic
+solver. The conda-build handoff fix can land independently of that core change.
 
 ### Introduction and release history
 
