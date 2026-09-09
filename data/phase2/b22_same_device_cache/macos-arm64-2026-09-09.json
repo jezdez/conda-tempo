@@ -1,0 +1,147 @@
+{
+  "base": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+  "head": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+  "files": 512,
+  "bytes_per_file": 65536,
+  "repeats": 5,
+  "timing_scope": "cache selection, link-type detection, and linking 512 files into an existing empty target directory",
+  "source_files": "freshly written and OS-cached, no fsync",
+  "filesystem": {
+    "remote": "apfs",
+    "target": "apfs"
+  },
+  "distinct_source_devices": true,
+  "macos": "26.6.2",
+  "architecture": "arm64",
+  "python": "3.13.14",
+  "median_ms": {
+    "base": 165.75612500309944,
+    "head": 97.40741702262312
+  },
+  "speedup": 1.7016786818667222,
+  "samples": [
+    {
+      "revision": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+      "case": "base",
+      "sample": 0,
+      "elapsed_ms": 162.0048750191927,
+      "selected_cache": "remote",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "copy fallback",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 0
+    },
+    {
+      "revision": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+      "case": "head",
+      "sample": 0,
+      "elapsed_ms": 100.87195795495063,
+      "selected_cache": "local",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "hardlink",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 512,
+      "device_stat_calls_for_ten_selections": 4,
+      "without_target_keeps_first_cache": true,
+      "no_same_device_keeps_first_cache": true
+    },
+    {
+      "revision": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+      "case": "head",
+      "sample": 1,
+      "elapsed_ms": 97.40741702262312,
+      "selected_cache": "local",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "hardlink",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 512
+    },
+    {
+      "revision": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+      "case": "base",
+      "sample": 1,
+      "elapsed_ms": 167.3257079673931,
+      "selected_cache": "remote",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "copy fallback",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 0
+    },
+    {
+      "revision": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+      "case": "base",
+      "sample": 2,
+      "elapsed_ms": 164.37904199119657,
+      "selected_cache": "remote",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "copy fallback",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 0
+    },
+    {
+      "revision": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+      "case": "head",
+      "sample": 2,
+      "elapsed_ms": 99.02829100610688,
+      "selected_cache": "local",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "hardlink",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 512
+    },
+    {
+      "revision": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+      "case": "head",
+      "sample": 3,
+      "elapsed_ms": 97.09658299107105,
+      "selected_cache": "local",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "hardlink",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 512
+    },
+    {
+      "revision": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+      "case": "base",
+      "sample": 3,
+      "elapsed_ms": 168.81266701966524,
+      "selected_cache": "remote",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "copy fallback",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 0
+    },
+    {
+      "revision": "7d3e81335f3016229f8f5dc7e82f69217d97f6d3",
+      "case": "base",
+      "sample": 4,
+      "elapsed_ms": 165.75612500309944,
+      "selected_cache": "remote",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "copy fallback",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 0
+    },
+    {
+      "revision": "6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9",
+      "case": "head",
+      "sample": 4,
+      "elapsed_ms": 95.29787499923259,
+      "selected_cache": "local",
+      "requested_link_type": "hardlink",
+      "effective_link_type": "hardlink",
+      "conda_modules_loaded_during_timing": 0,
+      "files_verified": 512,
+      "hardlinked_files": 512
+    }
+  ]
+}

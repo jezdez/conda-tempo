@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | Live audit 2026-08-12: seven implementation PRs are merged, six green and mergeable non-draft PRs await approval, B22 and B28 are mergeable with refreshed CI queued, B4 and B30 conflict, and five are closed. The W3@50k experimental stack measured mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
+| **Status** | B22 refreshed 2026-09-09: approved and mergeable, with CI still running or queued. The broader PR audit remains dated 2026-08-12. The W3@50k experimental stack measured mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,10 +31,11 @@
 
 ## Executive Summary
 
-> _Last refreshed 2026-09-07 to add the B31 lazy-index measurements and
-> follow-up issue. The other PR statuses below retain their 2026-08-12
-> audit date. Headline macOS/Linux end-to-end numbers remain unchanged since
-> the 2026-04-24 stacked runs. B31 has separate method-level measurements._
+> _Last refreshed 2026-09-09 to update B22's cache-selection measurement,
+> implementation details, and PR status. B31 was updated on 2026-09-07.
+> Other PR statuses retain their 2026-08-12 audit date. Headline macOS/Linux
+> end-to-end numbers remain unchanged since the 2026-04-24 stacked runs.
+> B22 and B31 have separate focused measurements._
 
 **Experimental-stack result: ~10–20 % faster on typical installs,
 20–40× faster on commands against large existing prefixes.** These
@@ -133,7 +134,7 @@ table unless called out in the notes.
 | B15 | conda | Optional py-rattler fast path in `PrefixGraph.__init__` | W5 29.5× at N=50 000, but small-prefix regressions and high mapping/dual-path maintenance cost | [conda/conda#15980](https://github.com/conda/conda/pull/15980) closed as research-only because the optional shim is not being pursued |
 | B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) is green and mergeable, with one unresolved review thread and no reply to the 2026-06-30 follow-up |
 | B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k with B2+B11: 574.61 s → 64.46 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is green and mergeable with no unresolved review threads, awaiting approval |
-| B22 | conda | Prefer same-device package cache entries | cross-device cache selection fixture: 3.24× by picking same-device hardlink path | [conda/conda#16347](https://github.com/conda/conda/pull/16347) is mergeable after a 2026-08-12 rebase onto current `main`. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads |
+| B22 | conda | Prefer same-device package cache entries | 2026-09-09 cross-device fixture: 165.76 → 97.41 ms, **1.70×**, by selecting same-device hardlinks. [Method and raw samples](#b22-same-device-cache-selection) | [conda/conda#16347](https://github.com/conda/conda/pull/16347) at `6137fcd` is approved and mergeable as of 2026-09-09, with no unresolved review threads. CI is still running or queued |
 | B23 | conda | Run pyc compiler from private helper script | focused pyc phase stays in same band: 1.18× at 500 files, 0.84× at 2,000 files | [conda/conda#16350](https://github.com/conda/conda/pull/16350) closed, superseded by B24's direct `compileall -j` path |
 | B24 | conda | Add uv-style pyc install controls | `compile_pyc: false` skips ~0.95-1.03 s pyc phase in focused Python-file fixtures | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is green and mergeable with no unresolved review threads, awaiting approval |
 | B25 | conda | Retry Windows package extraction longer | transient Windows `EACCES` simulation succeeds after 5th/9th attempt, steady overhead 0.31 us/call | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is green and mergeable with no unresolved review threads, awaiting approval |
@@ -148,13 +149,17 @@ B31 and its implementation PR are tracked separately from the dated filed-PR cou
 [measurements and completion criteria](#b31-preserve-lazy-indexes-during-conda-build-solves)
 cover solver preparation and are not included in the historical end-to-end totals.
 
-Current implementation set: 22 filed PRs across four repositories. Seven are
+Implementation-set snapshot from 2026-08-12: 22 filed PRs across four repositories. Seven are
 merged. Nine non-draft PRs remain open, but none is approved. Six are green and
 mergeable. B22 and B28 are mergeable with refreshed CI queued after their
 2026-08-12 rebase and restack. B4 conflicts with `main`. B30 is the remaining
 draft and still conflicts after the B28 restack. Five were closed after the
 measurements showed a semantic problem, no standalone benefit, or no
 end-to-end win. The remaining open conda PRs last ran CI in July.
+
+B22's 2026-09-09 status supersedes its entry in that snapshot: it is approved
+and mergeable, with CI still running or queued. The other PRs and aggregate
+counts have not been re-audited for this update.
 
 ### Remaining headroom
 
@@ -235,13 +240,13 @@ B6, B14, B15, B23, and B29 are closed. The nearest-term work is:
    about whether the sandboxed-extraction idea can remain separate work. The
    PR is green and mergeable, with one unresolved review thread and no reply to
    the 2026-06-30 follow-up.
-2. Get reviewer follow-up on B21 [#16331](https://github.com/conda/conda/pull/16331), B22
-   [#16347](https://github.com/conda/conda/pull/16347), B24
+2. Get reviewer follow-up on B21 [#16331](https://github.com/conda/conda/pull/16331), B24
    [#16352](https://github.com/conda/conda/pull/16352), and B25
-   [#16353](https://github.com/conda/conda/pull/16353). Their current heads are
-   mergeable, and all prior review threads are resolved. B22 was rebased onto
-   current `main` on 2026-08-12 and refreshed CI is queued. B21, B24, and B25
-   last ran CI in July.
+   [#16353](https://github.com/conda/conda/pull/16353). The heads inspected on
+   2026-08-12 were mergeable, with all prior review threads resolved.
+   For B22 [#16347](https://github.com/conda/conda/pull/16347), the 2026-09-09
+   follow-up is to wait for CI on `6137fcd` before merging. It is already
+   approved, with no unresolved review threads.
 3. Review and land the platform copy stack in order: B26
    [#16368](https://github.com/conda/conda/pull/16368), B27
    [#16369](https://github.com/conda/conda/pull/16369), and B28
@@ -1721,10 +1726,13 @@ benchmark stack so the review queue can handle each platform and
 transaction-path change separately. These PRs are status-tracked here;
 they are not included in the April Phase-4 headline table above.
 
+Only B22's status was refreshed on 2026-09-09. The other rows retain the
+2026-08-12 audit date.
+
 | ID | Fixes | PR status |
 |---|---|---|
 | B21 | Faster `PrefixGraph` topological sorting | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is green and mergeable with no unresolved review threads, awaiting approval. |
-| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) is mergeable after a 2026-08-12 rebase onto current `main`. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads. |
+| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) at `6137fcd` is approved and mergeable as of 2026-09-09, with no unresolved review threads. CI is still running or queued. |
 | B23 | Run pyc compiler from a private helper script | [conda/conda#16350](https://github.com/conda/conda/pull/16350) is closed. The larger fixture regressed and B24 now uses `compileall -j` directly. |
 | B24 | Add uv-style pyc install controls | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is green and mergeable with no unresolved review threads, awaiting approval. |
 | B25 | Retry Windows package extraction longer | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is green and mergeable with no unresolved review threads, awaiting approval. |
@@ -1735,13 +1743,14 @@ they are not included in the April Phase-4 headline table above.
 | B30 | Clone eligible package subtrees on APFS | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is a conflicting draft on B28 with seven unresolved review threads. |
 
 Focused follow-up measurements on macOS 26.5.2 arm64 with APFS,
-using the Python 3.10 conda dev environment, except B27 which was
+using the Python 3.10 conda dev environment, except B22 which was
+remeasured on macOS 26.6.2 arm64 with APFS and Python 3.13.14, B27 which was
 measured on Windows 11 ARM64 with NTFS and B28 which was measured
 on Ubuntu 24.04 arm64 with btrfs on `/dev/sdb1`:
 
 | ID | Case | Base | PR branch | Speedup |
 |---|---|---:|---:|---:|
-| B22 | 512 files, 64 KiB each; first cache entry on mounted APFS disk image, second on target-prefix device | 390.95 ms | 120.65 ms | 3.24× |
+| B22 | 512 files, 64 KiB each, first cache entry on mounted APFS disk image, second on target-prefix device | 165.76 ms | 97.41 ms | 1.70× |
 | B23 | 500 Python files, pyc compile phase | 951.56 ms | 808.42 ms | 1.18× |
 | B23 | 2,000 Python files, pyc compile phase | 1.03 s | 1.22 s | 0.84× |
 | B24 | 500 Python files with `compile_pyc: false` | 951.56 ms compile phase | skipped | n/a |
@@ -1764,7 +1773,8 @@ on Ubuntu 24.04 arm64 with btrfs on `/dev/sdb1`:
 | B30 | W2 fresh data-science environment | 17.356 s | 13.411 s | 22.7 % faster |
 | B30 | Add W2 packages to an existing prefix | 11.850 s | 8.693 s | 26.6 % faster |
 
-B22-B27 compare against their PR bases as described in the table. B28 compares
+B22 compares exact revisions documented below. B23-B27 compare against their
+PR bases as described in the table. B28 compares
 against B27. B29 and B30 compare against B28 because B30 was restacked directly
 after B29 closed.
 
@@ -1780,6 +1790,66 @@ the 64 KiB gate: `FICLONE` loses at 1-16 KiB (0.85-0.97×), starts
 winning at 32 KiB (1.05×), and reaches 1.25× at 64 KiB, 2.17× at
 256 KiB, and 6.50× at 1 MiB. The 64 KiB cutoff is therefore conservative
 and keeps the PR scoped to copy-heavy medium/large files.
+
+#### B22: Same-device cache selection
+
+`PackageCacheData.get_entry_to_link()` previously selected the first extracted
+entry with the requested package identity. If that cache was on a different
+filesystem from the target prefix, file creation could fall back to copying
+even when an equivalent same-device cache entry was available.
+
+The current implementation prefers extracted entries on the target device.
+`PackageCacheRecord.matches_metadata()` compares available size and MD5 values,
+including legacy archive metadata. Selection stops at the first suitable entry
+and retains the previous fallback when no suitable same-device entry exists.
+Memoizing the device comparison by cache root and target prefix avoids
+repeating those device checks. Other filesystem checks still run.
+
+This improves hardlink eligibility. It adds no clone or reflink implementation
+and is complementary to B26-B28, which do not require B22 to function.
+Configuration and per-file requirements can still require copying.
+
+The 2026-09-09 measurement compares `main` at
+[`7d3e813`](https://github.com/conda/conda/commit/7d3e81335f3016229f8f5dc7e82f69217d97f6d3)
+with the PR at
+[`6137fcd`](https://github.com/conda/conda/commit/6137fcd5c5dde3015bdd4d6b5f65cbf0dcb5a3c9).
+It uses two equivalent synthetic extracted caches, one on a mounted APFS disk
+image and one on the target device, with 512 files of 64 KiB each. Five repeats
+per revision alternate base-first and PR-first order. The timer covers cache
+selection, link-type detection, and file creation in an existing empty target.
+Source data is OS-cached, with no explicit disk flush. Hardlinks are enabled
+and softlinks disabled. The runtime is macOS 26.6.2 arm64 with Python 3.13.14.
+
+The medians are **165.76 ms** for cross-device copy fallback and **97.41 ms**
+for same-device hardlinks, a **1.70×** speedup. All 512 output files have matching
+contents. Device and inode checks confirm that the base creates copies and the
+PR creates hardlinks. Ten repeated selections cause only four device `stat()`
+calls, one pair for each cache root. The first-cache fallback also holds without
+a target prefix or without a same-device candidate.
+
+[Raw samples](data/phase2/b22_same_device_cache/macos-arm64-2026-09-09.json)
+and the [benchmark script](bench/phase2/bench_same_device_cache.py) accompany this
+result. The script loads conda's Python source from the specified Git revisions
+without changing the checkout. No conda modules load during the timed interval.
+Dependencies and non-Python resources come from the shared local environment.
+Run it from an environment with conda's test dependencies, including `pytest`
+and `pytest-mock`, and with both revisions already present in the conda repository:
+
+```bash
+python bench/phase2/bench_same_device_cache.py \
+  --conda-repo ../conda \
+  --output b22-results.json
+```
+
+This is a focused cache-selection and file-creation measurement. It excludes
+downloads, extraction, full transactions, prefix replacement, and durable writes.
+It does not establish a universal installation speedup.
+
+The earlier **390.95 ms → 120.65 ms (3.24×)** result remains a historical report
+from 2026-07-09 on macOS 26.5.2 and Python 3.10. Its original benchmark script,
+raw samples, and exact revisions were not found, so the five-repeat method in
+the former PR description could not be independently checked. The new result
+supersedes that figure in the current summary and PR description.
 
 ### Phase 4: end-to-end confirmation
 
@@ -2190,6 +2260,7 @@ remain local because they can contain runtime filenames.
 
 | Date | Change |
 |---|---|
+| 2026-09-09 | **Refresh B22's same-device cache measurement and claims.** Compare exact revisions `7d3e813` and `6137fcd` on macOS 26.6.2 arm64 with Python 3.13.14. Five-repeat medians are **165.76 → 97.41 ms (1.70×)** for 512 files of 64 KiB each. Add the benchmark script and raw samples, retain the earlier 3.24× figure as historical, and describe device-check memoization and hardlink eligibility precisely. B22 is approved and mergeable with no unresolved review threads, while CI is still running or queued. Other PR statuses and the April Phase-4 headline measurements are unchanged. |
 | 2026-09-07 | **B31 added for lazy-index preservation.** Filed [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) for eager truthiness and copying during solver preparation, linked [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) and [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045), and explicitly extended Track B to this Python index handoff. Added three-run Memray and unprofiled RSS measurements plus the already-realized control, with a portable harness and individual results. A complete recipe-build comparison remains outstanding. Historical post-solver and end-to-end totals are unchanged. |
 | 2026-08-12 | **Live Track B status audit completed.** Seven PRs are merged and five are closed. Six non-draft PRs are green and mergeable. B22 and B28 are mergeable with refreshed CI queued, but none of the nine open non-draft PRs is approved. B4 and the B30 draft conflict. B20 has one unresolved review thread, and B30 has seven. Later the same day, B22 was rebased onto current `main` and B28 was restacked on current B27. Both refreshed heads passed local validation and are waiting for queued CI. Added an explicit caveat that the headline results measure the April experimental stack, not the current seven-merged-PR subset. No benchmarks were rerun. |
 | 2026-07-22 | **B27 native Windows copy follow-up completed.** Updated [#16369](https://github.com/conda/conda/pull/16369) to use CPython's `_winapi.CopyFile2` wrapper on Python 3.12+ and retain `CopyFileW` on Python 3.10 and 3.11. A powered 20-repeat Windows 11 ARM64 NTFS comparison measured `CopyFile2` at **2.72×** for one 64 MiB file, **10.18×** for 512 64 KiB files, and **8.80×** for 2,048 1 KiB files versus conda's Python copy loop. Follow-up 80-repeat probes found `CopyFile2` and `CopyFileW` within about 1 % on the same fixture. The native path passed on Garak under Python 3.10.20, 3.11.15, and 3.13.14. B27 was marked ready for review, leaving B30 as the only implementation draft. The broader Track B status at that point was seven merged, nine ready for review, one draft, and five closed. |
@@ -2230,7 +2301,7 @@ remain local because they can contain runtime filenames.
 | 2026-04-23 | **Scalene integrated for Phase 1 and Phase 2** via [`bench/run_scalene.py`](bench/run_scalene.py) and [`bench/phase2/run_scalene.py`](bench/phase2/run_scalene.py). Produces JSON with per-line Python / native / system time breakdown — the only tool in the harness that distinguishes "time inside a C extension" from "time in pure Python". The conda-forge scalene build for Python 3.13 on macOS 26 fails to load due to an `arm64e.old` ABI mismatch (rebuilt needed with Xcode 16 SDK — unrelated to our work); integration is Linux-container-only for now. Documented in bench/README and bench/phase2/README. |
 | 2026-04-23 | **Phase 2: S2, S7, S9 confirmed.** Three new benchmarks + three new fixture builders (`synthetic_hardlink_actions`, `synthetic_py_packages`, `synthetic_prefix_records`). S7: 1.73× parallel speedup at K=4 on APFS (projected ~3× on Linux ext4, **later rejected** — see 2026-04-23). S9: **40.5× speedup at P=60** from batching pyc-compile subprocesses — projected **~8.5 s / 26 s off W2 (~33 %)**, the largest single-fix reduction any suspect has shown. S2: textbook O(N²) at 9.5 µs per inner iteration, 47 s at N=1 000; projected 33 hours at N=50 000 if anyone ever ran `update --all` against a that-large env. Cumulative: **five suspects confirmed** (S2, S6, S7, S9, S11), combined W1 projection 40 % reduction, W2 48 %, W3 97 % conditional on B11 in `conda-libmamba-solver`. Phase-2 summary table added to the doc. |
 | 2026-04-23 | **Phase 2: S6 confirmed.** New benchmark [`bench_s6_verify_individual.py`](bench/phase2/bench_s6_verify_individual.py) and a shared fixture builder `synthetic_prefix_replace_actions(m, ...)` in [`fixtures.py`](bench/phase2/fixtures.py) that creates M real files + M real `PrefixReplaceLinkAction` instances. pyperf full mode at M={50, 200, 1 000} gives 36 ms / 146 ms / 740 ms — **perfectly linear O(M) at 0.73 ms/action** for 4 KB files. memray at M=1 000 peaks at 22.5 MiB, 4 601 allocations — not memory-bound, purely disk-and-CPU-bound copy + rewrite + hash. Projection: B6 (ThreadPoolExecutor fan-out at `link.py:632` across `min(cpu, 4)` threads) should drop W1's 5.5 s verify phase to ~1.4 s → **~40 % W1 wall-time reduction** on its own. Thread-safety reviewed: each action writes its own uuid-named intermediate, no shared-state mutation. |
-| 2026-04-23 | **Phase 2 scaffold committed, S11 confirmed.** New [`bench/phase2/`](bench/phase2/) directory with shared fixture (`fixtures.synthetic_prefix`), a pyperf sweep orchestrator ([`run_pyperf.py`](bench/phase2/run_pyperf.py)), a memray harness ([`run_memray.py`](bench/phase2/run_memray.py)), and the first suspect benchmark ([`bench_s11_libmamba_installed.py`](bench/phase2/bench_s11_libmamba_installed.py)). pyperf full mode at N={1000, 5000, 10000} gives per-access times of 330 µs / 2.35 ms / 5.40 ms respectively — **O(N log N) per access**, matching the `dict(sorted(...))` pattern exactly. The end-to-end O(N²-ish) cost observed in Phase 1 W3 comes from `_specs_to_request_jobs` calling `.installed` O(N) times. memray at N=5000/100-accesses peaks at 36 MiB: transient allocation churn, no retention — the fix is CPU-only. Proposed B11 PoC (cache the sorted result for the solve's lifetime) projects a ~47 000× per-access speedup and should collapse W3 wall time from 35 s toward ~1 s. PoC fix belongs in `conda-libmamba-solver`, not `conda`. | 
+| 2026-04-23 | **Phase 2 scaffold committed, S11 confirmed.** New [`bench/phase2/`](bench/phase2/) directory with shared fixture (`fixtures.synthetic_prefix`), a pyperf sweep orchestrator ([`run_pyperf.py`](bench/phase2/run_pyperf.py)), a memray harness ([`run_memray.py`](bench/phase2/run_memray.py)), and the first suspect benchmark ([`bench_s11_libmamba_installed.py`](bench/phase2/bench_s11_libmamba_installed.py)). pyperf full mode at N={1000, 5000, 10000} gives per-access times of 330 µs / 2.35 ms / 5.40 ms respectively — **O(N log N) per access**, matching the `dict(sorted(...))` pattern exactly. The end-to-end O(N²-ish) cost observed in Phase 1 W3 comes from `_specs_to_request_jobs` calling `.installed` O(N) times. memray at N=5000/100-accesses peaks at 36 MiB: transient allocation churn, no retention — the fix is CPU-only. Proposed B11 PoC (cache the sorted result for the solve's lifetime) projects a ~47 000× per-access speedup and should collapse W3 wall time from 35 s toward ~1 s. PoC fix belongs in `conda-libmamba-solver`, not `conda`. |
 | 2026-04-23 | **memray added as Phase-1 third artifact.** New harness [`bench/run_memray.py`](bench/run_memray.py) uses `memray run --aggregate --follow-fork --native -m conda ...`, then renders a summary table, a peak-memory/allocation JSON, and an HTML flamegraph. Peak RSS: W1 59.2 MiB, W2 92.8 MiB, W3 53.5 MiB. Memory is not a first-order concern at these workload sizes. W3's peak is *lower* than W1's despite the 24 s libmamba-solver cost — the quadratic term in S11 is iteration through pre-allocated data, not allocation churn. Known macOS caveat: conda-forge ships CPython without DWARF debug info, so C-level stacks show function names but not file:line; Python-level attribution is unaffected. Fully documented in [`bench/README.md`](bench/README.md#memray-and-the-no-symbol-information-warning). |
 | 2026-04-23 | **Phase 1 deliverable complete: cProfile top-20 + `time_recorder` per-phase timings committed** to [`data/phase1/<w>/cprofile.{prof,top20.txt}`](data/phase1/) and [`data/phase1/<w>/time_recorder.json`](data/phase1/) for all three workloads. Summary and rankings added to [Phase-1 takeaways](#phase-1-takeaways) above. Fixed two harness bugs while doing this: renamed `bench/profile.py` → [`bench/run_cprofile.py`](bench/run_cprofile.py) because the old name shadowed the stdlib `profile` module that cProfile imports internally; corrected the `runpy.run_module` target from `conda.cli` (a package, cannot be executed) to `conda` (has a `__main__.py`). Also rewrote [`bench/parse_time_recorder.py`](bench/parse_time_recorder.py) to use the current `time_recorder.total_run_time` class var + CSV fallback instead of the non-existent `_CHRONOS_COLLECTED_FNS`. **New suspect S11 added** based on the W3 cProfile: `conda_libmamba_solver.state.SolverInputState.installed` is the dominant cost of the synthetic-prefix workload, not S1/S2. |
 | 2026-04-23 | **Phase 1 baseline measurements committed.** W1 (9.90 ± 0.26 s), W2 (25.70 ± 0.17 s), W3 (35.33 ± 0.28 s) on MacBookPro18,1 (M1 Pro, 10-core, 32 GB), macOS 26.3.1, `conda/conda@main` `7c1ebba7c` built from source via `dev/start -p 3.13 -i miniforge -u`, hyperfine `--warmup 1 --runs 5`. Raw data in [`data/phase1/<w>/hyperfine.json`](data/phase1/). Host metadata in [`data/machine.json`](data/machine.json). W2 and W3 wall times came in 30–60× lower than the original back-of-envelope estimates — libmamba is significantly faster than the classic-solver numbers the original plan was calibrated against. |
