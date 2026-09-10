@@ -375,6 +375,23 @@ Other cph code (``create``, ``transmute``, ``validate_converted_files_match_stre
 only during package building / conversion / introspection, not
 during installs.
 
+#### @dholth subinterpreter note
+
+[test_extract_subinterp.py](https://github.com/dholth/conda/blob/857a0447baf6f1f8709d5ccf7dec159e391b9cf3/tests/test_extract_subinterp.py)
+compares threads with Python 3.14's `InterpreterPoolExecutor`, whose workers
+each have their own GIL. Daniel [reported benefits from 3-6 interpreters on his
+M1 Mac](https://github.com/conda/conda/pull/15974#issuecomment-4330440282),
+consistent with Python GIL limits when extracting `.conda`.
+
+The experiment originally required the `pyzstd-compression` branch of
+conda-package-streaming because `python-zstandard` did not support
+subinterpreters. That backend change shipped in
+[conda-package-streaming 0.13.0](https://github.com/conda/conda-package-streaming/releases/tag/v0.13.0),
+which uses `compression.zstd` on Python 3.14 and `backports.zstd` on older
+supported Python versions.
+
+When extracting `.tar.bz2` we are able to get benefit from threads because more work happens in the bzip2 module which drops GIL, but a typical conda user probably only uses `.conda` packages now.
+
 #### Unpacking speedups: the full picture
 
 Single-package extract cProfile (3 real scientific-Python .conda
@@ -471,8 +488,7 @@ This reframes the "rewrite in Rust" case for cps. Adopting py-rattler:
 - **Alignment with the conda ecosystem direction** — py-rattler is
   already part of the ``conda/`` org (prefix.dev's contribution),
   not a community-maintained side project. The consolidation story
-  is consistent with the cps author's stated interest in folding
-  cph into cps: a single Rust-backed extract path across the
+  is a single Rust-backed extract path across the
   ecosystem.
 - **Drops ~500 lines of hand-written cps Python** (``extract_stream``
   + ``TarfileNoSameOwner`` + ``tar_generator``) for a thinner wrapper
@@ -502,6 +518,10 @@ This reframes the "rewrite in Rust" case for cps. Adopting py-rattler:
 | A. Optional fast path in cps | ``cps.extract.extract(path, dest)`` tries ``import rattler`` first; falls back to stdlib tarfile if not installed | small (~30 LOC) | low |
 | B. Hard dep swap | cps requires py-rattler; all ``extract_stream`` call sites rewritten | medium-large | medium — breaks streaming API users |
 | C. cps absorbs cph + gains rattler fast path | Consolidates cph into cps AND adds rattler as fast backend; cph deprecated | large | medium — ecosystem coordination |
+
+> conda-index uses the streaming API to stop metadata iteration as soon as the
+> required metadata is found. It then reads the archive for MD5 and SHA256
+> checksums.
 
 Option A is the cleanest incremental step. It delivers the Linux
 speedup for users who install py-rattler without forcing it on
