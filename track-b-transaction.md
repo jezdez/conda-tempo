@@ -7,7 +7,7 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 24, 2026 |
-| **Status** | B22 refreshed 2026-09-09: approved and mergeable, with CI still running or queued. The broader PR audit remains dated 2026-08-12. The W3@50k experimental stack measured mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
+| **Status** | B22 merged 2026-09-09 after its final 94-check CI matrix passed. Across the original 22 implementation PRs, eight non-draft PRs are green and mergeable, while B30 remains a mergeable draft with CI failures. Status refreshed 2026-09-10. The W3@50k experimental stack measured mac 12.4 s / Linux 8.0 s (>24× / >37× vs intractable baseline) |
 | **Tracking** | [conda/conda#15969](https://github.com/conda/conda/issues/15969) — Track B implementation plan epic |
 | **See also** | [Track A — startup latency](track-a-startup.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -31,16 +31,17 @@
 
 ## Executive Summary
 
-> _Last refreshed 2026-09-09 to update B22's cache-selection measurement,
-> implementation details, and PR status. B31 was updated on 2026-09-07.
-> Other PR statuses retain their 2026-08-12 audit date. Headline macOS/Linux
-> end-to-end numbers remain unchanged since the 2026-04-24 stacked runs.
-> B22 and B31 have separate focused measurements._
+> _Last refreshed 2026-09-10 to record B22's merge and audit the remaining
+> Track B PRs. B22's cache-selection measurement was refreshed on 2026-09-09.
+> B31's core and solver changes merged on 2026-09-08, while the conda-build
+> fix awaits review. Headline macOS/Linux end-to-end numbers remain unchanged
+> since the 2026-04-24 stacked runs. B22 and B31 have separate focused
+> measurements._
 
 **Experimental-stack result: ~10–20 % faster on typical installs,
 20–40× faster on commands against large existing prefixes.** These
 totals measure the April 2026 full experimental branch stack, not the
-current seven-merged-PR subset. That stack included B4, B14, and B20,
+current eight-merged-PR post-solver subset. That stack included B4, B14, and B20,
 which have not all shipped. The merged subset has not been remeasured
 end to end, so these totals are not current conda performance. The
 20–40× result is the user-visible story (``conda update --all`` on a
@@ -119,7 +120,7 @@ table unless called out in the notes.
 |---|---|---|---|---|
 | B1 | conda | Quadratic diff sort | 782× at N=50 000 | [conda/conda#15970](https://github.com/conda/conda/pull/15970) merged 2026-07-11 |
 | B2 | conda | O(N²) `PrefixGraph.__init__` | 53× at N=1 000 | [conda/conda#15971](https://github.com/conda/conda/pull/15971) merged 2026-07-12 |
-| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB, but only by dropping `conda doctor` altered-file data | [conda/conda#15972](https://github.com/conda/conda/pull/15972) conflicts with `main`. Recommend closing unless altered-file detection becomes opt-in |
+| B4 | conda | `sha256_in_prefix` gated on `extra_safety_checks` | 27 % per-file at 1/10/50 MB, but only by dropping `conda doctor` altered-file data | [conda/conda#15972](https://github.com/conda/conda/pull/15972) is green and mergeable after its 2026-09-01 rebase, with no unresolved review threads. Recommend closing unless altered-file detection becomes opt-in |
 | B6 | conda | Parallel transaction-action verification through the shared executor | Current-main real-package runs: K=2 was 14-36 % slower and K=4 was 14-40 % slower in prepare/verify | [conda/conda#15973](https://github.com/conda/conda/pull/15973) closed; B9c removed the per-action codesign cost that had justified this direction |
 | B7 | conda | Parallel `posix.link` fan-out | 1.52× on mac, **regresses on Linux** | dropped |
 | B8 | conda | Process-pool package extraction | 1.56× vs serial on the S8 fresh-cache fixture | [conda/conda#15974](https://github.com/conda/conda/pull/15974) merged 2026-07-14 |
@@ -132,20 +133,20 @@ table unless called out in the notes.
 | B13 (cph) | cph | Thread one `ZipFile` through both components (depends on cps#173) | 2× per archive | [conda/conda-package-handling#318](https://github.com/conda/conda-package-handling/pull/318) merged |
 | B14 | cps | Skip `utime` in `TarfileNoSameOwner` | 3.4 % per extract, but the mtime premise was wrong | [conda/conda-package-streaming#174](https://github.com/conda/conda-package-streaming/pull/174) closed and dropped |
 | B15 | conda | Optional py-rattler fast path in `PrefixGraph.__init__` | W5 29.5× at N=50 000, but small-prefix regressions and high mapping/dual-path maintenance cost | [conda/conda#15980](https://github.com/conda/conda/pull/15980) closed as research-only because the optional shim is not being pursued |
-| B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) is green and mergeable, with one unresolved review thread and no reply to the 2026-06-30 follow-up |
+| B20 | cps | Hybrid fast/fallback per-member safety check | +22.6 % Linux, neutral mac | [conda/conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175) is green and mergeable, with one current and two outdated unresolved review threads and no reply to the 2026-06-30 follow-up |
 | B21 | conda | Avoid repeated full-graph scans during `PrefixGraph` toposort | Windows W3 realistic 50k with B2+B11: 574.61 s → 64.46 s | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is green and mergeable with no unresolved review threads, awaiting approval |
-| B22 | conda | Prefer same-device package cache entries | 2026-09-09 cross-device fixture: 165.76 → 97.41 ms, **1.70×**, by selecting same-device hardlinks. [Method and raw samples](#b22-same-device-cache-selection) | [conda/conda#16347](https://github.com/conda/conda/pull/16347) at `6137fcd` is approved and mergeable as of 2026-09-09, with no unresolved review threads. CI is still running or queued |
+| B22 | conda | Prefer same-device package cache entries | 2026-09-09 cross-device fixture: 165.76 → 97.41 ms, **1.70×**, by selecting same-device hardlinks. [Method and raw samples](#b22-same-device-cache-selection) | [conda/conda#16347](https://github.com/conda/conda/pull/16347) merged 2026-09-09 from `6137fcd` after all review threads were resolved and all 94 checks passed |
 | B23 | conda | Run pyc compiler from private helper script | focused pyc phase stays in same band: 1.18× at 500 files, 0.84× at 2,000 files | [conda/conda#16350](https://github.com/conda/conda/pull/16350) closed, superseded by B24's direct `compileall -j` path |
 | B24 | conda | Add uv-style pyc install controls | `compile_pyc: false` skips ~0.95-1.03 s pyc phase in focused Python-file fixtures | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is green and mergeable with no unresolved review threads, awaiting approval |
 | B25 | conda | Retry Windows package extraction longer | transient Windows `EACCES` simulation succeeds after 5th/9th attempt, steady overhead 0.31 us/call | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is green and mergeable with no unresolved review threads, awaiting approval |
 | B26 | conda | APFS `clonefile` for copy-mode installs | copy-mode file creation: 64 MiB file 71.1×, 512 small files 1.43× on APFS | [conda/conda#16368](https://github.com/conda/conda/pull/16368) is green and mergeable with no unresolved review threads, awaiting approval |
 | B27 | conda | Native Windows copy backend | Windows NTFS `CopyFile2` creation: 64 MiB file 2.72×, 512 small files 10.18×, 2,048 tiny files 8.80× | [conda/conda#16369](https://github.com/conda/conda/pull/16369) is green and mergeable on B26 with no formal review. Python 3.10 and 3.11 retain the `CopyFileW` fallback |
-| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file 242×, 512 small files 1.54×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is mergeable after a 2026-08-12 restack on current B27. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads |
+| B28 | conda | Linux `FICLONE` for copy-mode installs | btrfs copy-mode file creation with 64 KiB gate: 64 MiB file 242×, 512 small files 1.54×, tiny files avoid raw ioctl path | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is green and mergeable on current B27 after its 2026-09-01 restack, with no unresolved review threads and approval pending |
 | B29 | conda | Aggregate transaction hardlink actions | focused wins did not survive powered W1 | [conda/conda#16371](https://github.com/conda/conda/pull/16371) closed, no end-to-end win |
-| B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) conflicting draft on B28 with seven unresolved review threads |
-| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) open, with the conda-build fix in [#6126](https://github.com/conda/conda-build/pull/6126). Companion [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) remains open |
+| B30 | conda | Clone eligible package subtrees on APFS | W2 −22.7 %, add-to-existing-prefix −26.6 % versus B28 | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is a mergeable draft on B28 with seven unresolved review threads. Its latest run has 91 successful and three failed checks, comprising two macOS test jobs and the derived `analyze` job |
+| B31 | conda-build + conda-libmamba-solver | Preserve lazy indexes during conda-build solves | At 1M records, 2,161.433 → 0.163 MiB peak tracked heap in the isolated methods | Core [conda/conda#16635](https://github.com/conda/conda/pull/16635) and solver [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) merged 2026-09-08. [conda/conda-build#6126](https://github.com/conda/conda-build/pull/6126) remains open and awaiting review, tracked by [#6125](https://github.com/conda/conda-build/issues/6125) |
 
-B31 and its implementation PR are tracked separately from the dated filed-PR counts below. Its
+B31 and its implementation PRs are tracked separately from the dated filed-PR counts below. Its
 [measurements and completion criteria](#b31-preserve-lazy-indexes-during-conda-build-solves)
 cover solver preparation and are not included in the historical end-to-end totals.
 
@@ -157,9 +158,12 @@ draft and still conflicts after the B28 restack. Five were closed after the
 measurements showed a semantic problem, no standalone benefit, or no
 end-to-end win. The remaining open conda PRs last ran CI in July.
 
-B22's 2026-09-09 status supersedes its entry in that snapshot: it is approved
-and mergeable, with CI still running or queued. The other PRs and aggregate
-counts have not been re-audited for this update.
+The live 2026-09-10 audit supersedes that snapshot. B22 merged on 2026-09-09
+after its final 94-check matrix passed. All eight remaining open non-draft PRs
+in the original set are green and mergeable, with approval pending. B30 is
+mergeable but remains a draft after two macOS test jobs and the derived
+`analyze` job failed. B31's core and solver PRs merged on 2026-09-08, while its
+conda-build PR awaits review.
 
 ### Remaining headroom
 
@@ -230,10 +234,10 @@ bottleneck directly observable rather than speculative:
 
 ### Next steps
 
-As of 2026-08-12, seven PRs are merged. Nine non-draft PRs remain open, but
-none is approved. Six are green and mergeable. B22 and B28 are mergeable with
-refreshed CI queued, B4 conflicts with `main`, B30 is a conflicting draft, and
-B6, B14, B15, B23, and B29 are closed. The nearest-term work is:
+As of 2026-09-10, eight of the original 22 implementation PRs are merged. Eight
+non-draft PRs remain open. All are green and mergeable, but none is approved.
+B30 is the only draft. It is mergeable, but its latest CI run failed. B6, B14,
+B15, B23, and B29 are closed. The nearest-term work is:
 
 1. Follow up with Daniel on B20
    [conda-package-streaming#175](https://github.com/conda/conda-package-streaming/pull/175)
@@ -242,23 +246,24 @@ B6, B14, B15, B23, and B29 are closed. The nearest-term work is:
    the 2026-06-30 follow-up.
 2. Get reviewer follow-up on B21 [#16331](https://github.com/conda/conda/pull/16331), B24
    [#16352](https://github.com/conda/conda/pull/16352), and B25
-   [#16353](https://github.com/conda/conda/pull/16353). The heads inspected on
-   2026-08-12 were mergeable, with all prior review threads resolved.
-   For B22 [#16347](https://github.com/conda/conda/pull/16347), the 2026-09-09
-   follow-up is to wait for CI on `6137fcd` before merging. It is already
-   approved, with no unresolved review threads.
+   [#16353](https://github.com/conda/conda/pull/16353). All three are green and
+   mergeable, with all prior review threads resolved.
 3. Review and land the platform copy stack in order: B26
    [#16368](https://github.com/conda/conda/pull/16368), B27
    [#16369](https://github.com/conda/conda/pull/16369), and B28
    [#16367](https://github.com/conda/conda/pull/16367). B26 and B27 are green
-   and mergeable. B28 was restacked on current B27 on 2026-08-12, is
-   mergeable, and has refreshed CI queued. B27 has no formal review yet.
-4. Rebase and simplify B30 on the refreshed B28
+   and mergeable. B28 is also green and mergeable after its 2026-09-01 restack
+   on current B27. B27 has no formal review yet.
+4. Fix B30's failing macOS tests
    [#16376](https://github.com/conda/conda/pull/16376), then resolve its seven
-   review threads.
+   review threads. The current failures cover softlink preservation and package
+   cache cleanup behavior.
 5. Decide whether B4 [#15972](https://github.com/conda/conda/pull/15972) should
    make altered-file detection opt-in. Rebase it if yes, otherwise close it.
-6. Add Linux x86_64 numbers and rerun the Windows W3/W4 stack against an exact
+6. Get reviewer follow-up on the B31 conda-build fix
+   [conda-build#6126](https://github.com/conda/conda-build/pull/6126) and complete
+   the recipe-build measurement.
+7. Add Linux x86_64 numbers and rerun the Windows W3/W4 stack against an exact
    or equivalent April stack. The current Windows data is useful but not a
    like-for-like replacement for the macOS/Linux full-stack runs.
 
@@ -1726,21 +1731,20 @@ benchmark stack so the review queue can handle each platform and
 transaction-path change separately. These PRs are status-tracked here;
 they are not included in the April Phase-4 headline table above.
 
-Only B22's status was refreshed on 2026-09-09. The other rows retain the
-2026-08-12 audit date.
+Live PR statuses were refreshed on 2026-09-10.
 
 | ID | Fixes | PR status |
 |---|---|---|
 | B21 | Faster `PrefixGraph` topological sorting | [conda/conda#16331](https://github.com/conda/conda/pull/16331) is green and mergeable with no unresolved review threads, awaiting approval. |
-| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) at `6137fcd` is approved and mergeable as of 2026-09-09, with no unresolved review threads. CI is still running or queued. |
+| B22 | Prefer same-device package cache entries | [conda/conda#16347](https://github.com/conda/conda/pull/16347) merged 2026-09-09 from `6137fcd` after all review threads were resolved and all 94 checks passed. |
 | B23 | Run pyc compiler from a private helper script | [conda/conda#16350](https://github.com/conda/conda/pull/16350) is closed. The larger fixture regressed and B24 now uses `compileall -j` directly. |
 | B24 | Add uv-style pyc install controls | [conda/conda#16352](https://github.com/conda/conda/pull/16352) is green and mergeable with no unresolved review threads, awaiting approval. |
 | B25 | Retry Windows package extraction longer | [conda/conda#16353](https://github.com/conda/conda/pull/16353) is green and mergeable with no unresolved review threads, awaiting approval. |
 | B26 | Use APFS `clonefile` for copy-mode installs | [conda/conda#16368](https://github.com/conda/conda/pull/16368) is green and mergeable with no unresolved review threads, awaiting approval. It is the base of the platform copy stack. |
 | B27 | Add a native Windows copy backend | [conda/conda#16369](https://github.com/conda/conda/pull/16369) is green and mergeable on B26 with no formal review. Python 3.12+ uses `_winapi.CopyFile2`, while Python 3.10 and 3.11 retain the `CopyFileW` fallback. |
-| B28 | Use Linux `FICLONE` for copy-mode installs | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is mergeable after a 2026-08-12 restack on current B27. Local validation passed, refreshed CI is queued, and approval remains pending with no unresolved review threads. |
+| B28 | Use Linux `FICLONE` for copy-mode installs | [conda/conda#16367](https://github.com/conda/conda/pull/16367) is green and mergeable on current B27 after its 2026-09-01 restack, with no unresolved review threads and approval pending. |
 | B29 | Aggregate transaction hardlink actions | [conda/conda#16371](https://github.com/conda/conda/pull/16371) is closed after a powered W1 run was neutral. |
-| B30 | Clone eligible package subtrees on APFS | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is a conflicting draft on B28 with seven unresolved review threads. |
+| B30 | Clone eligible package subtrees on APFS | [conda/conda#16376](https://github.com/conda/conda/pull/16376) is a mergeable draft on B28 with seven unresolved review threads. Its latest run has 91 successful and three failed checks, comprising two macOS test jobs and the derived `analyze` job. |
 
 Focused follow-up measurements on macOS 26.5.2 arm64 with APFS,
 using the Python 3.10 conda dev environment, except B22 which was
@@ -2136,10 +2140,14 @@ zstd content). The W3 numbers within 0.1 s across runs are noise.
 ## B31: Preserve lazy indexes during conda-build solves
 
 **Status:** [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125)
-is open, with its handoff fix proposed in [#6126](https://github.com/conda/conda-build/pull/6126).
-The solver-side change is
-[conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044),
-tracked by [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045).
+is open, with its handoff fix awaiting review in
+[#6126](https://github.com/conda/conda-build/pull/6126). The solver-side change
+[conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044)
+merged on 2026-09-08. Its release tracking issue
+[#1045](https://github.com/conda/conda-libmamba-solver/issues/1045) remains open
+for 26.9.0. Core [conda/conda#16635](https://github.com/conda/conda/pull/16635)
+also merged on 2026-09-08, and [#16638](https://github.com/conda/conda/issues/16638)
+is closed.
 
 The conda-build handoff evaluates `if index`, then copies the index into
 `solver._index`. Both operations independently access `Index.data` before
@@ -2154,7 +2162,7 @@ The coordinated fix must preserve local output-channel discovery, subdir
 handling, consistency across recipe solves, and classic-solver behavior.
 
 The conda-build fix uses the existing lazy `Index.__copy__` implementation
-available in supported conda versions. [conda/conda#16635](https://github.com/conda/conda/pull/16635)
+available in supported conda versions. Merged [conda/conda#16635](https://github.com/conda/conda/pull/16635)
 also makes `Index.copy()` lazy and reduces a supplied lazy index for the classic
 solver. The conda-build handoff fix can land independently of that core change.
 
@@ -2260,6 +2268,7 @@ remain local because they can contain runtime filenames.
 
 | Date | Change |
 |---|---|
+| 2026-09-10 | **Live Track B status refreshed after B22 merged.** [conda/conda#16347](https://github.com/conda/conda/pull/16347) merged on 2026-09-09 from `6137fcd` after all review threads were resolved and all 94 checks passed. Eight of the original 22 implementation PRs are now merged. All eight remaining non-draft PRs are green and mergeable, with approval pending. B30 is a mergeable draft whose latest run has 91 successful checks, two failed macOS test jobs, and the derived failed `analyze` job. B31 core [conda/conda#16635](https://github.com/conda/conda/pull/16635) and solver [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) also merged on 2026-09-08, while [conda/conda-build#6126](https://github.com/conda/conda-build/pull/6126) awaits review. Measurements are unchanged. |
 | 2026-09-09 | **Refresh B22's same-device cache measurement and claims.** Compare exact revisions `7d3e813` and `6137fcd` on macOS 26.6.2 arm64 with Python 3.13.14. Five-repeat medians are **165.76 → 97.41 ms (1.70×)** for 512 files of 64 KiB each. Add the benchmark script and raw samples, retain the earlier 3.24× figure as historical, and describe device-check memoization and hardlink eligibility precisely. B22 is approved and mergeable with no unresolved review threads, while CI is still running or queued. Other PR statuses and the April Phase-4 headline measurements are unchanged. |
 | 2026-09-07 | **B31 added for lazy-index preservation.** Filed [conda/conda-build#6125](https://github.com/conda/conda-build/issues/6125) for eager truthiness and copying during solver preparation, linked [conda/conda-libmamba-solver#1044](https://github.com/conda/conda-libmamba-solver/pull/1044) and [#1045](https://github.com/conda/conda-libmamba-solver/issues/1045), and explicitly extended Track B to this Python index handoff. Added three-run Memray and unprofiled RSS measurements plus the already-realized control, with a portable harness and individual results. A complete recipe-build comparison remains outstanding. Historical post-solver and end-to-end totals are unchanged. |
 | 2026-08-12 | **Live Track B status audit completed.** Seven PRs are merged and five are closed. Six non-draft PRs are green and mergeable. B22 and B28 are mergeable with refreshed CI queued, but none of the nine open non-draft PRs is approved. B4 and the B30 draft conflict. B20 has one unresolved review thread, and B30 has seven. Later the same day, B22 was rebased onto current `main` and B28 was restacked on current B27. Both refreshed heads passed local validation and are waiting for queued CI. Added an explicit caveat that the headline results measure the April experimental stack, not the current seven-merged-PR subset. No benchmarks were rerun. |
