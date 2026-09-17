@@ -8,7 +8,7 @@
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
 | **Last refreshed** | September 17, 2026 |
-| **Status** | Implementation in progress: 23 of 25 Track A PRs merged. The first 22 shipped in conda 26.7.0. A2/A3 merged into `main` on September 17 and is not yet released. A11 conflicts with `main` and requires review despite green checks on its existing head. A19b is mergeable with changes requested and one failing Windows integration job plus the `analyze` gate. |
+| **Status** | Implementation in progress: 23 of 25 Track A PRs merged. The first 22 shipped in conda 26.7.0. A2/A3 merged into `main` on September 17 and is not yet released. A11 and A19b now include that `main` revision and are mergeable. A11 requires review and A19b retains changes requested. Local focused tests and pre-commit passed, with hosted CI running on both updated heads. |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
 | **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -79,18 +79,25 @@ conda 26.7.2.
 
 Two PRs remain open and are not drafts:
 
-- A11 [#15883](https://github.com/conda/conda/pull/15883), head `199111d66`,
-  conflicts with `main` and requires review of the plugin-hook behavior.
-  All 94 reported checks pass on that head, before incorporating the merged
-  A2/A3 revision.
-- A19b [#15916](https://github.com/conda/conda/pull/15916), head `44bf76d73`,
-  is mergeable but retains Jaime's changes-requested review. Subsequent fixes
+- A11 [#15883](https://github.com/conda/conda/pull/15883), head `62a11e3c3`,
+  includes `main` at `03d0bb006a` through a merge commit. The parser conflict
+  is resolved, retaining the lazy parser and A11's command-hook guard.
+  It is mergeable and still requires review of the plugin-hook behavior.
+- A19b [#15916](https://github.com/conda/conda/pull/15916), head `751015a79`,
+  includes the same `main` through a clean merge and retains Jaime's
+  changes-requested review. Previously applied compatibility fixes
   preserve `Link` coercion, empty values in `from_objects()`, package-cache
   metadata matching, and the empty `PrefixRecord.extracted_package_dir`
-  default. Compatibility review is still needed. Of 184 reported checks,
-  181 pass, the Windows Python 3.14 conda-forge integration group 2 and
-  `analyze` fail, and Bencher's PR measurement check is neutral. The test
-  failure is a timeout in `test_powershell_deactivate_help[powershell]`.
+  default. Compatibility review is still needed. The previous head's Windows
+  timeout in `test_powershell_deactivate_help[powershell]` remains a follow-up
+  to check in the new CI run.
+
+Local macOS/Python 3.13 validation passed: 228 tests for A11 and 495 distinct
+tests across A19b's focused runs, plus three subtests on each. Local activation
+and channel-priority settings were isolated for the runs, without changing
+user configuration or tests. Pre-commit passed on both branches. A single
+post-push snapshot confirmed both heads are mergeable, with hosted checks
+queued or running and no failures reported yet. This is not a final CI result.
 
 No new release target or post-merge performance measurement is claimed.
 The next measurement work is to lower the parser module-count budgets using
@@ -614,7 +621,7 @@ Python 3.15 work live in the [Track C](track-c-future.md).
 | A8 | Defer heavy imports in `exceptions.py` | 3.10+ | ~20 lines | −71 modules, −23 ms | ✅ [#15880](https://github.com/conda/conda/pull/15880) merged |
 | A9 | Defer `concurrent.futures`/`threading` in `common/io.py` | 3.10+ | ~10 lines | −45 modules, −12 ms | ✅ [#15881](https://github.com/conda/conda/pull/15881) merged |
 | A10 | Lazy `import ruamel.yaml` in `serialize/yaml.py` | 3.10+ | ~5 lines | −32 modules, ~0 ms warm | ✅ [#15882](https://github.com/conda/conda/pull/15882) merged |
-| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms (historical prototype) | 🟡 [#15883](https://github.com/conda/conda/pull/15883) `199111d66`, conflicts with `main`, review required, 94 checks pass on existing head |
+| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms (historical prototype) | 🟡 [#15883](https://github.com/conda/conda/pull/15883) `62a11e3c3`, includes `main` at `03d0bb006a`, mergeable, review required, hosted CI running |
 | A12 | Eliminate redundant `context.__init__` in `main_subshell` | 3.10+ | ~15 lines | −1 ms | ✅ [#15885](https://github.com/conda/conda/pull/15885) merged |
 | A13 | Speed up `_expand_search_path` and `custom_expandvars` (fast-path + lazy `os.environ` lookup, `os.scandir`) | 3.10+ | ~30 lines | ~−2 ms per process (~5.1× cheaper per `_expand_search_path` call); CodSpeed: ×8 on `test_context_init`, −30 to −60 ms on subcommand benches via shared `custom_expandvars()` | ✅ [#15886](https://github.com/conda/conda/pull/15886) merged |
 | A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | ✅ [#15887](https://github.com/conda/conda/pull/15887) merged |
@@ -623,7 +630,7 @@ Python 3.15 work live in the [Track C](track-c-future.md).
 | A17 | Start `ContextStack` with single slot | 3.10+ | ~5 lines | code quality | ✅ [#15889](https://github.com/conda/conda/pull/15889) merged |
 | A18 | Pre-compile regexes in hot parsers | 3.10+ | ~30 lines | −41 ms / 50k specs (1.3×) | ✅ [#15890](https://github.com/conda/conda/pull/15890) merged |
 | A19a | Drop `ChannelType` metaclass (`__new__` + `@cache` on `from_value`) | 3.10+ | ~90 lines | code quality (unlocks A19b review) | ✅ [#15942](https://github.com/conda/conda/pull/15942) merged |
-| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | September 1 comparison: 1.64× faster init and 6.08× faster dump. Not remeasured after subsequent fixes. April scale and memory figures are historical. | 🔴 [#15916](https://github.com/conda/conda/pull/15916) `44bf76d73`, mergeable with changes requested, Windows integration timeout and failed `analyze`, compatibility review pending |
+| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | September 1 comparison: 1.64× faster init and 6.08× faster dump. Not remeasured after subsequent fixes. April scale and memory figures are historical. | 🔴 [#15916](https://github.com/conda/conda/pull/15916) `751015a79`, includes `main` at `03d0bb006a`, mergeable with changes requested, hosted CI running, compatibility review pending |
 | A20a | Replace `deepcopy` with dict comprehension in solver | 3.10+ | ~5 lines | −0.6 ms/solve (deepcopy 11.7×) | ✅ [#15917](https://github.com/conda/conda/pull/15917) merged |
 | A20b | Enable ruff `G004`; use lazy log formatting across codebase | 3.10+ | ~90 lines | ~6 µs/startup (correctness fix) | ✅ [#15891](https://github.com/conda/conda/pull/15891) merged |
 | A21 | Optimize `PrefixData` I/O (`read_bytes`+`json.loads`) | 3.10+ | ~50 lines | −31 ms / 2k pkgs (1.5×) | ✅ [#15892](https://github.com/conda/conda/pull/15892) merged |
@@ -1346,15 +1353,18 @@ record fixes for `Link` coercion, preservation of empty and zero values in
 invalidation remains private. The PR now states that its API differs from
 `Entity`, including the missing `__fields__`, instance `__dict__`, and explicit
 `__contains__` implementation. The September 1 audit above has not been rerun
-in full against head `44bf76d73` and is not a list of confirmed current bugs.
+in full against the updated head and is not a list of confirmed current bugs.
 
 @dholth commented on the timestamp cutoff on September 8, and @jezdez replied
 on September 9 that it preserves the existing seconds/milliseconds conversion.
 All review threads are resolved, but Jaime's changes-requested review remains.
-The current head is mergeable. Its Windows Python 3.14 conda-forge integration
-group 2 failed on a `test_powershell_deactivate_help[powershell]` timeout, which
-also failed the `analyze` gate. The cause has not been established by this
-status refresh.
+The previous head `44bf76d73` had a Windows Python 3.14 conda-forge integration
+group 2 timeout in `test_powershell_deactivate_help[powershell]`, which also
+failed `analyze`. The subsequent clean merge of `main` at `03d0bb006a` produced
+head `751015a79` without changing the record implementation. Local focused
+record, cache, index, solver, cleanup, and parser tests passed after isolating
+local conda settings. Hosted CI is running, including fresh Windows coverage.
+The old Windows timeout has not been reproduced or diagnosed locally.
 
 Retained Entity-based classes: `Link`, `PathData`, `PathDataV1`,
 `PathsData` (used by `PrefixRecord` for detailed file metadata).
@@ -1717,10 +1727,10 @@ combined command total is claimed.
 Twenty-two PRs shipped in conda 26.7.0 (A1, A4, A5, A5b, A6,
 A7, A8, A9, A10, A12, A13, A14, A15, A17, A18, A19a, A20a, A20b, A21, A22,
 A23, A24). A2/A3 is the 23rd merged PR, landed on September 17 and not yet
-released. A11 (`199111d66`) now conflicts with `main` and requires review,
-despite 94 passing checks on its existing head. A19b (`44bf76d73`) is mergeable
-with changes requested, a Windows integration timeout, and a failed
-`analyze` gate. Its compatibility fixes need re-review.
+released. A11 (`62a11e3c3`) and A19b (`751015a79`) now include that merged
+`main` revision and are mergeable. A11 requires review, and A19b's compatibility
+fixes need re-review of the changes-requested decision. Local focused tests
+and pre-commit passed, with hosted CI still running on both updated heads.
 
 A13 ([#15886](https://github.com/conda/conda/pull/15886)) speeds up
 `_expand_search_path` and `custom_expandvars` directly (~5.1× faster
@@ -1733,8 +1743,8 @@ research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
 [Track B](track-b-transaction.md).
 
-The remaining work is to resolve A11's conflicts and review its hook behavior,
-finish A19b's compatibility review and CI follow-up, and measure startup on the
+The remaining work is to review A11's hook behavior, finish A19b's compatibility
+review and CI follow-up, and measure startup on the
 merged parser before lowering its module budgets. Current performance tracking
 uses pytest-benchmark and Bencher. No new release target is committed.
 
@@ -1746,6 +1756,7 @@ uses pytest-benchmark and Bencher. No new release target is committed.
 
 | Date | Change |
 |---|---|
+| 2026-09-17 | **Updated both remaining PRs with `main` at `03d0bb006a` using merge commits.** A11 [#15883](https://github.com/conda/conda/pull/15883) is now `62a11e3c3`, with its parser conflict resolved while retaining the merged lazy parser and command-hook guard. A19b [#15916](https://github.com/conda/conda/pull/15916) merged cleanly to `751015a79`, preserving the record implementation and compatibility fixes. Local macOS/Python 3.13 validation passed 228 A11 tests and 495 distinct A19b tests across focused runs, plus three subtests each. Stale local activation and strict channel-priority settings were isolated for testing without changing user configuration. Pre-commit passed before both pushes. One post-push snapshot confirmed both PRs mergeable, A11 review required, A19b changes requested, and hosted checks pending with no failures reported yet. |
 | 2026-09-17 | **A2/A3 [#15868](https://github.com/conda/conda/pull/15868) merged at 11:51 UTC, commit `03d0bb006a`, after @kenodegard approved the final head on September 16.** Live verification of all 25 Track A PRs confirms **23 merged and 2 open**. The first 22 shipped in 26.7.0, while A2/A3 is not yet released. A11 [#15883](https://github.com/conda/conda/pull/15883) at `199111d66` conflicts with `main` and requires review, with 94 passing checks on that head. A19b [#15916](https://github.com/conda/conda/pull/15916) at `44bf76d73` is mergeable with changes requested, 181 passing checks, a Windows PowerShell integration timeout, a failed `analyze` gate, and a neutral Bencher check. Recorded subsequent A19b compatibility fixes without treating the September 1 audit as current. Updated the merged parser description, current pytest module budgets, and Bencher guidance. Lowering parser budgets is now unblocked but still requires measurements across supported CI environments. No new performance figures or release target are claimed. |
 | 2026-09-01 | **The three remaining Track A PRs were rebased onto current `main` (`f79624e4a`), their news fragments moved to `releases/news/`, and their current claims rechecked.** A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable and review required at `3cf12e63c4d16894a2fa5339c2db6da67f4a5972`. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable and review required at `199111d66b888e8197f8b4d99a30a0073c326348`. A19b [#15916](https://github.com/conda/conda/pull/15916) is mergeable with changes requested at `65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`. The A19b rebase preserved current-main `indexed_timestamp` behavior and added `IndexedTimestampField` as the ninth lazy legacy descriptor shim. Verification confirmed faster construction and `dump()` but found remaining dict-like methods, `Entity` helpers, package-type derivation, `Link` coercion, validation, `from_objects()`, late URL derivation, and required package-cache path differences. The April timing, scale, and memory tables remain as historical measurements and are marked not exactly reproducible. A September independent comparison measured 1.64× faster initialization and 6.08× faster `dump()`, while current memory savings remain unverified. Hosted checks are running, and no new release target is committed. |
 | 2026-08-12 | **The remaining Track A PRs were refreshed after conda 26.7.0 shipped.** All 22 merged Track A PRs are included in 26.7.0. A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916) were rebased onto current `main` without conflicts and remain mergeable. Feedback is applied on all three, and fresh CI is running. A2/A3 and A11 await reviewer decisions. A19b still carries Jaime's changes-requested review pending re-review of the compatibility fixes. No new release target is committed. |
