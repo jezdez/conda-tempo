@@ -6,7 +6,7 @@ Three tracks of performance research on conda, each in its own document:
 
 | Track | Document | What | Status |
 |---|---|---|---|
-| A | [track-a-startup.md](track-a-startup.md) | Startup latency on Python 3.10+: imports, plugin discovery, context init. Ships now. | 20 of 25 PRs merged |
+| A | [track-a-startup.md](track-a-startup.md) | Startup latency on Python 3.10+: imports, plugin discovery, context init. | 23 of 25 PRs merged, including lazy parser loading on September 17, 2026. A11 and A19b remain open. |
 | B | [track-b-transaction.md](track-b-transaction.md) | Transaction pipeline: solve → fetch → verify → link → history. Post-solver machinery, cross-platform. | Phase 1+2 complete, 6 suspects confirmed, pixi harness |
 | C | [track-c-future.md](track-c-future.md) | Python 3.15 PEP 810 lazy imports, CPython build research, speculative opportunities (Rust bootstrapper, daemon, AOT, plugin-group refactor). | Research — not actionable until 3.15 feedstock lands |
 
@@ -32,12 +32,12 @@ pixi run linux-fetch            # copy results to data/phase{1,2}_linux/
 ## What "tempo" means
 
 conda does a lot of work before, during, and after a user-visible command runs.
-Each of the three documents takes one slice of that work, measures it, identifies
+Each of the three documents takes one part of that work, measures it, identifies
 a short list of suspects, and fixes what the measurements justify. The pattern is
 the same across tracks:
 
 1. Measure a fixed workload with a fixed harness (hyperfine, cProfile,
-   `time_recorder`, CodSpeed, pytest-benchmark).
+   `time_recorder`, pytest-benchmark). Conda's CI reports measurements to Bencher.
 2. Identify the top suspects. Write microbenchmarks that isolate each one.
 3. Only build proof-of-concept fixes for suspects the microbenchmarks confirm.
 4. One PR per fix, <100 LOC where possible, news entry, before/after numbers.

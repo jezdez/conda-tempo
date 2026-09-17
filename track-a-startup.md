@@ -7,8 +7,8 @@
 | **Initiative** | [conda-tempo](https://github.com/jezdez/conda-tempo) — measuring and reducing conda's tempo |
 | **Author** | Jannis Leidel ([@jezdez](https://github.com/jezdez)) |
 | **Date** | April 3, 2026 (split into tracks on April 23, 2026; migrated to conda-tempo repo same day) |
-| **Last refreshed** | September 1, 2026 |
-| **Status** | Implementation in progress — 22 of 25 Track A PRs merged and shipped in conda 26.7.0. The 3 open PRs are mergeable and based on current `main` (`f79624e4a`). A2/A3 and A11 are review required, A19b has changes requested, and hosted checks are running on all 3 heads. |
+| **Last refreshed** | September 17, 2026 |
+| **Status** | Implementation in progress: 23 of 25 Track A PRs merged. The first 22 shipped in conda 26.7.0. A2/A3 merged into `main` on September 17 and is not yet released. A11 conflicts with `main` and requires review despite green checks on its existing head. A19b is mergeable with changes requested and one failing Windows integration job plus the `analyze` gate. |
 | **Tracking** | [conda/conda#15867](https://github.com/conda/conda/issues/15867) — Reduce startup latency: Track A implementation plan |
 | **See also** | [Track B — transaction latency](track-b-transaction.md) · [Track C — Python 3.15 and speculative research](track-c-future.md) |
 
@@ -68,17 +68,35 @@ Profiling reveals two areas responsible for ~80% of the overhead (see
 
 ### Proposed changes
 
-Track A is twenty-five targeted changes (A1–A24, with A16 cancelled), all
-compatible with Python 3.10+. No new language features, no architectural
-changes, and full backward compatibility as a merge requirement. Estimated
-effort: ~400 lines of code. Twenty-two are merged and shipped in conda 26.7.0.
-The three remaining PRs are open, no longer draft, mergeable, and based on
-current `main` (`f79624e4a`). A2/A3
-(`3cf12e63c4d16894a2fa5339c2db6da67f4a5972`) and A11
-(`199111d66b888e8197f8b4d99a30a0073c326348`) are review required. A19b
-(`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`) has changes requested because
-public-API and validation differences still need code changes or narrower
-claims. Hosted checks are running on all three refreshed heads.
+Track A comprises twenty-five PRs (A1–A24, with A16 cancelled), targeting
+Python 3.10+ without new language features. Full backward compatibility
+remains a merge requirement. Twenty-three PRs are merged. The first 22 shipped
+in conda 26.7.0. Lazy parser loading and deferred plugin discovery (A2/A3,
+[#15868](https://github.com/conda/conda/pull/15868)) merged on September 17 at
+`03d0bb006aed9365500a15d7cb65cf6c4fda42c4`, after @kenodegard approved the
+final head on September 16. This merge is not in the latest published release,
+conda 26.7.2.
+
+Two PRs remain open and are not drafts:
+
+- A11 [#15883](https://github.com/conda/conda/pull/15883), head `199111d66`,
+  conflicts with `main` and requires review of the plugin-hook behavior.
+  All 94 reported checks pass on that head, before incorporating the merged
+  A2/A3 revision.
+- A19b [#15916](https://github.com/conda/conda/pull/15916), head `44bf76d73`,
+  is mergeable but retains Jaime's changes-requested review. Subsequent fixes
+  preserve `Link` coercion, empty values in `from_objects()`, package-cache
+  metadata matching, and the empty `PrefixRecord.extracted_package_dir`
+  default. Compatibility review is still needed. Of 184 reported checks,
+  181 pass, the Windows Python 3.14 conda-forge integration group 2 and
+  `analyze` fail, and Bencher's PR measurement check is neutral. The test
+  failure is a timeout in `test_powershell_deactivate_help[powershell]`.
+
+No new release target or post-merge performance measurement is claimed.
+The next measurement work is to lower the parser module-count budgets using
+the merged code across supported CI environments and inspect the paired
+pytest-benchmark results in Bencher. Historical CodSpeed results below retain
+their original measurement method.
 
 The following results were measured with `hyperfine --shell=none`:
 
@@ -93,8 +111,9 @@ The following results were measured with `hyperfine --shell=none`:
 The `requests.compat` fix alone — replacing one import line — saves 57 ms and
 180 modules from the context initialization phase. For subshell commands
 (`env list`, `list`, `config`), this contributes a 57 ms saving but the full
-effect requires lazy parser loading, which is a structural change that has been
-prototyped but not yet runtime-measured.
+effect was expected to require lazy parser loading. A2/A3 is now merged,
+but its historical isolated parser measurements do not establish fresh
+end-to-end command savings for the merged revision.
 
 **conda activate**
 
@@ -585,17 +604,17 @@ Python 3.15 work live in the [Track C](track-c-future.md).
 | ID | Change | Python req. | Effort | Impact | Status |
 |---|---|---|---|---|---|
 | A1 | Fix `requests.compat.json` import | 3.10+ | 1 line | −120 modules, −45 ms | ✅ [#15866](https://github.com/conda/conda/pull/15866) merged |
-| A2 | Lazy subcommand parser loading | 3.10+ | ~100 lines | −801 modules, −482 ms (isolated ceiling re-measured 2026-04-21 against post-merge `main`, original pre-Track-A baseline was −505 modules / −142 ms) | 🟡 [#15868](https://github.com/conda/conda/pull/15868) `3cf12e63c4d16894a2fa5339c2db6da67f4a5972`, mergeable and review required, hosted checks running |
-| A3 | Deferred plugin discovery in parser | 3.10+ | ~30 lines | included in A2 ceiling above | 🟡 [#15868](https://github.com/conda/conda/pull/15868) combined with A2, same head and hosted-check state |
+| A2 | Lazy subcommand parser loading | 3.10+ | combined PR: +599 / −135 lines across implementation, tests, and news | Historical isolated ceiling: −801 modules, −482 ms on 2026-04-21. Not a post-merge command measurement. | ✅ [#15868](https://github.com/conda/conda/pull/15868) merged 2026-09-17 at `03d0bb006a`, not yet released |
+| A3 | Deferred plugin discovery in parser | 3.10+ | included in A2 | included in A2 ceiling above | ✅ [#15868](https://github.com/conda/conda/pull/15868) merged with A2 |
 | A4 | Deferred imports in `main_*.py` / `notices/core.py` | 3.10+ | ~20 lines | −387 to −615 modules per subcommand | ✅ [#15879](https://github.com/conda/conda/pull/15879) merged |
 | A5 | Ruff `TID253` static import guard | 3.10+ | config | prevents regressions | ✅ [#15869](https://github.com/conda/conda/pull/15869) merged |
-| A5b | CodSpeed startup benchmarks | 3.10+ | done | tracks import/init cost | ✅ [#15850](https://github.com/conda/conda/pull/15850) merged |
+| A5b | Startup benchmarks (originally CodSpeed, now pytest-benchmark + Bencher) | 3.10+ | done | tracks import/init cost | ✅ [#15850](https://github.com/conda/conda/pull/15850) merged |
 | A6 | Skip plugin hooks for activate | 3.10+ | ~10 lines | −429 modules, −239 ms | ✅ [#15877](https://github.com/conda/conda/pull/15877) merged |
 | A7 | Fast path for `--version`/`-V` | 3.10+ | ~5 lines | ~100 ms total | ✅ [#15878](https://github.com/conda/conda/pull/15878) merged |
 | A8 | Defer heavy imports in `exceptions.py` | 3.10+ | ~20 lines | −71 modules, −23 ms | ✅ [#15880](https://github.com/conda/conda/pull/15880) merged |
 | A9 | Defer `concurrent.futures`/`threading` in `common/io.py` | 3.10+ | ~10 lines | −45 modules, −12 ms | ✅ [#15881](https://github.com/conda/conda/pull/15881) merged |
 | A10 | Lazy `import ruamel.yaml` in `serialize/yaml.py` | 3.10+ | ~5 lines | −32 modules, ~0 ms warm | ✅ [#15882](https://github.com/conda/conda/pull/15882) merged |
-| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms | 🟡 [#15883](https://github.com/conda/conda/pull/15883) `199111d66b888e8197f8b4d99a30a0073c326348`, mergeable and review required, hosted checks running |
+| A11 | Skip plugin hooks for `conda run` | 3.10+ | ~15 lines | −582 modules, −235 ms (historical prototype) | 🟡 [#15883](https://github.com/conda/conda/pull/15883) `199111d66`, conflicts with `main`, review required, 94 checks pass on existing head |
 | A12 | Eliminate redundant `context.__init__` in `main_subshell` | 3.10+ | ~15 lines | −1 ms | ✅ [#15885](https://github.com/conda/conda/pull/15885) merged |
 | A13 | Speed up `_expand_search_path` and `custom_expandvars` (fast-path + lazy `os.environ` lookup, `os.scandir`) | 3.10+ | ~30 lines | ~−2 ms per process (~5.1× cheaper per `_expand_search_path` call); CodSpeed: ×8 on `test_context_init`, −30 to −60 ms on subcommand benches via shared `custom_expandvars()` | ✅ [#15886](https://github.com/conda/conda/pull/15886) merged |
 | A14 | Make `root_writable` a `@memoizedproperty` | 3.10+ | ~1 line | −0.1 ms per access | ✅ [#15887](https://github.com/conda/conda/pull/15887) merged |
@@ -604,7 +623,7 @@ Python 3.15 work live in the [Track C](track-c-future.md).
 | A17 | Start `ContextStack` with single slot | 3.10+ | ~5 lines | code quality | ✅ [#15889](https://github.com/conda/conda/pull/15889) merged |
 | A18 | Pre-compile regexes in hot parsers | 3.10+ | ~30 lines | −41 ms / 50k specs (1.3×) | ✅ [#15890](https://github.com/conda/conda/pull/15890) merged |
 | A19a | Drop `ChannelType` metaclass (`__new__` + `@cache` on `from_value`) | 3.10+ | ~90 lines | code quality (unlocks A19b review) | ✅ [#15942](https://github.com/conda/conda/pull/15942) merged |
-| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | September comparison: 1.64× faster init and 6.08× faster dump. April scale and memory figures are historical. | 🔴 [#15916](https://github.com/conda/conda/pull/15916) `65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`, mergeable with changes requested, hosted checks running, compatibility gaps remain |
+| A19b | Replace `auxlib.Entity` with `@dataclass(slots=True)` for records | 3.10+ | ~600 lines | September 1 comparison: 1.64× faster init and 6.08× faster dump. Not remeasured after subsequent fixes. April scale and memory figures are historical. | 🔴 [#15916](https://github.com/conda/conda/pull/15916) `44bf76d73`, mergeable with changes requested, Windows integration timeout and failed `analyze`, compatibility review pending |
 | A20a | Replace `deepcopy` with dict comprehension in solver | 3.10+ | ~5 lines | −0.6 ms/solve (deepcopy 11.7×) | ✅ [#15917](https://github.com/conda/conda/pull/15917) merged |
 | A20b | Enable ruff `G004`; use lazy log formatting across codebase | 3.10+ | ~90 lines | ~6 µs/startup (correctness fix) | ✅ [#15891](https://github.com/conda/conda/pull/15891) merged |
 | A21 | Optimize `PrefixData` I/O (`read_bytes`+`json.loads`) | 3.10+ | ~50 lines | −31 ms / 2k pkgs (1.5×) | ✅ [#15892](https://github.com/conda/conda/pull/15892) merged |
@@ -654,33 +673,44 @@ paid a 45 ms, 120-module tax for network libraries it had not asked for.
 
 #### A2. Lazy subcommand parser loading
 
-> **~100 lines** · `conda_argparse.py` · −520 modules · −80 ms
+Merged with A3 in [#15868](https://github.com/conda/conda/pull/15868) on
+2026-09-17 at `03d0bb006a`.
 
-Currently `generate_parser()` eagerly calls all 20+ `configure_parser_*()`
-functions, each importing its subcommand module and its full dependency tree.
-The prototype replaces this with a `_LazySubParsersAction` that:
+Previously, `conda_argparse.py` imported every built-in subcommand module and
+`generate_parser()` configured every parser. The merged implementation uses
+`BUILTIN_SUBCOMMANDS` as the shared source of module paths, help text, and
+aliases. `_LazySubParsersAction` registers lightweight stubs and imports a
+subcommand's module through `importlib.import_module()` when its parser is
+needed. `_LazyParserMap` also supports parser lookup by documentation tools,
+while name enumeration and membership checks avoid loading every parser.
 
-- Registers lightweight stub parsers for all subcommands (so argparse
-  validation works)
-- Only loads the real `configure_parser` for the subcommand actually invoked
-- Defers plugin subcommand discovery until a non-builtin command is requested
+Deprecated `configure_parser_*` and `*_rc_path` re-exports remain available
+through `deprecated.constant(factory=...)`, preserving lazy resolution and
+deprecation warnings.
 
-This is implemented with `importlib.import_module()` — no new syntax. It
-reduces `generate_parser()` from 157 ms / 520 modules to 0.2 ms / 0 modules.
+The 2026-04-21 isolated measurement compared parser import, construction, and
+`parse_args(['--version'])`: 545.0 → 63.5 ms and 926 → 125 total modules.
+These are historical measurements against that day's baseline. The earlier
+prototype's `generate_parser()`-only result was 157 → 0.2 ms and 520 → 0
+additional modules. Neither result measures end-to-end savings from the
+September merge. In the April comparison, real-command timings were
+essentially unchanged because plugin loading dominated.
 
 ---
 
 #### A3. Deferred plugin discovery
 
-> **~30 lines** · `conda_argparse.py` · −50 ms
+Merged with A2. `generate_parser()` no longer discovers plugin subcommands.
+Discovery runs when rendering top-level help, listing commands, handling an
+unknown command, or dispatching a command outside
+`_PLUGIN_FREE_BUILTIN_COMMANDS`. The exception set contains `activate`,
+`deactivate`, and `run`. Other built-in commands still discover plugins during
+dispatch so plugin override checks continue to run.
 
-`configure_parser_plugins()` is currently called during parser build, triggering
-`pluggy`, `importlib.metadata.distributions()`, and all registered entry points.
-The prototype defers this call until a non-builtin subcommand is actually
-requested.
-
-For `conda install`, `conda create`, and other builtin commands, plugin
-discovery never runs during parser construction.
+This distinction matters for A11: the merged parser skips discovery for
+`conda run`, but `do_call()` still accesses `context.plugin_manager` to invoke
+pre- and post-command hooks. [#15883](https://github.com/conda/conda/pull/15883)
+remains the separate change needed to avoid loading the manager at that point.
 
 ---
 
@@ -715,7 +745,7 @@ deferred.
 | `main_env` | +647 modules, 282 ms | +32 modules, 10 ms | **−615 modules, −272 ms** |
 | `notices.core` | +557 modules, 204 ms | +170 modules, 64 ms | **−387 modules, −140 ms** |
 
-Without A2/A3 (i.e. with the current eager `generate_parser()` path), A4 saves
+In the pre-A2/A3 measurements with eager `generate_parser()`, A4 saved
 only ~4 modules because `conda_argparse` pulls everything in regardless.
 
 **What A4 defers:**
@@ -733,7 +763,7 @@ structural change (lazy loading) into concrete per-command savings.
 
 #### A5. Static import guard (Ruff `TID253`) + runtime module-count budgets
 
-> **Config change** · `pyproject.toml` + CodSpeed benchmarks · prevents regressions
+> **Config change** · `pyproject.toml` + pytest module-count tests · prevents regressions
 
 Two complementary layers replace the original custom `import_linter.py` script:
 
@@ -743,9 +773,9 @@ Two complementary layers replace the original custom `import_linter.py` script:
    `conda/plugins/`). This catches regressions like the A1 bug at `ruff check`
    time — before code is committed.
 
-2. **Runtime detection** — CodSpeed module-count budget tests (added in A5b /
+2. **Runtime detection:** pytest module-count budget tests (added in A5b /
    [PR #15850](https://github.com/conda/conda/pull/15850)) measure
-   `len(sys.modules)` at five startup phases and fail if the count exceeds a
+   `len(sys.modules)` at six startup phases and fail if the count exceeds a
    per-phase budget. This catches regressions that static analysis cannot
    (e.g., a new transitive dependency pulled in by a non-banned import).
 
@@ -900,7 +930,7 @@ context of conda's startup where some deps are shared). These load during
 The module count reduction (206 → ~174) is still valuable for:
 
 - Cold-cache scenarios (CI, container startup, first invocation)
-- Module-count budget compliance (CodSpeed guardrails)
+- Module-count budget compliance (pytest guardrails)
 - Reducing the surface area for import-time side effects
 
 The implementation is straightforward: defer `import ruamel.yaml` and the
@@ -1052,8 +1082,8 @@ the saving is more visible on pure-startup paths (`conda --version`,
 `conda activate`) and `custom_expandvars()` is called from other code
 paths so the speedup benefits more than just search-path expansion.
 
-**CodSpeed confirmation.**  PR #15886's CI run compares the branch to
-`main` using CodSpeed's CPU-instruction simulator (deterministic, not
+**Historical CodSpeed confirmation (April 2026).** PR #15886's CI run compared
+the branch to `main` using CodSpeed's CPU-instruction simulator (deterministic, not
 wall-time on a real machine — shapes/ratios are meaningful, absolute ms
 are not directly comparable to the hyperfine numbers above).  The
 cleanest A13-only signal is `test_context_init`, which essentially
@@ -1219,11 +1249,11 @@ reported in April rather than a result that can now be reproduced exactly.
 
 **Independent comparison on 2026-09-01.** A common 14-field fixture was run
 for 50,000 iterations, taking the median of 5 rounds on Python 3.13 and macOS
-ARM64. It compared current `main` (`f79624e4a`) with the rebased A19b code at
-`f685ae953`, which is carried unchanged by the current head
-`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`:
+ARM64. It compared the September 1 `main` (`f79624e4a`) with the rebased A19b
+code at `f685ae953`, carried by that day's head `65ee843df`. Subsequent
+compatibility fixes are not covered by this measurement:
 
-| Operation | Current `main` | Rebased A19b | Result |
+| Operation | September 1 `main` | September 1 A19b | Result |
 |---|---|---|---|
 | Instantiation | 12.065 µs each | 7.365 µs each | **1.64× faster** |
 | `dump()` serialization | 13.841 µs each | 2.276 µs each | **6.08× faster** |
@@ -1286,8 +1316,8 @@ replaced all four Entity-based record classes with
 - `indexed_timestamp` seconds normalization, millisecond serialization, and
   no fallback to `date`, matching current `main`
 
-**Compatibility status on 2026-09-01:** the broad "same public API" and
-explicit `__contains__` claims are not correct. Remaining differences include:
+**Historical compatibility audit on 2026-09-01:** the broad "same public API"
+and explicit `__contains__` claims were not correct. The audit found:
 
 - Dict-like methods from `Entity` are absent: `__contains__`, `__setitem__`,
   `__delitem__`, `__iter__`, `items()`, `copy()`, `setdefault()`, and
@@ -1309,8 +1339,22 @@ explicit `__contains__` claims are not correct. Remaining differences include:
   and assigning `url` after initialization does not derive `channel`, `subdir`,
   and `fn`.
 
-These differences require code changes or narrower compatibility claims before
-A19b is ready for re-review.
+**Follow-up status on 2026-09-17:** the current PR description and commits
+record fixes for `Link` coercion, preservation of empty and zero values in
+`from_objects()`, the default `PrefixRecord.extracted_package_dir`, and
+`PackageCacheRecord.matches_metadata()` after the #16347 merge. Identity cache
+invalidation remains private. The PR now states that its API differs from
+`Entity`, including the missing `__fields__`, instance `__dict__`, and explicit
+`__contains__` implementation. The September 1 audit above has not been rerun
+in full against head `44bf76d73` and is not a list of confirmed current bugs.
+
+@dholth commented on the timestamp cutoff on September 8, and @jezdez replied
+on September 9 that it preserves the existing seconds/milliseconds conversion.
+All review threads are resolved, but Jaime's changes-requested review remains.
+The current head is mergeable. Its Windows Python 3.14 conda-forge integration
+group 2 failed on a `test_powershell_deactivate_help[powershell]` timeout, which
+also failed the `analyze` gate. The cause has not been established by this
+status refresh.
 
 Retained Entity-based classes: `Link`, `PathData`, `PathDataV1`,
 `PathsData` (used by `PrefixRecord` for detailed file metadata).
@@ -1529,9 +1573,9 @@ Net standalone contribution once stacked is ~2 ms: most of the 158 ms isolated c
 > **Ongoing** · CI + release metrics · prevent regressions
 
 - Ruff `TID253` catches banned module-level imports statically ([PR #15869](https://github.com/conda/conda/pull/15869))
-- CodSpeed module-count budgets catch runtime regressions ([PR #15850](https://github.com/conda/conda/pull/15850) ✅ merged)
-- CodSpeed CPU-instruction benchmarks track timing regressions across PRs
-- Ratchet module-count budgets down as A2/A3/A4 merge
+- Pytest module-count budgets catch runtime regressions ([PR #15850](https://github.com/conda/conda/pull/15850) merged)
+- pytest-benchmark measurements are reported to Bencher. Paired PR comparisons are informational, while branch history retains regression alerts.
+- Ratchet parser module-count budgets down now that A2/A3 and A4 are merged, using measurements across supported CI environments.
 - Establish a startup time budget: e.g., "conda --version < 100 ms on 3.15,
   < 250 ms on 3.13"
 - Publish startup benchmarks in release notes
@@ -1543,8 +1587,9 @@ Net standalone contribution once stacked is ~2 ms: most of the 158 ms isolated c
 ## 5. Regression prevention
 
 This is [roadmap item A5](#a5-static-import-guard-ruff-tid253--runtime-module-count-budgets).
-Regression prevention uses two layers that run in existing CI — no custom
-workflow needed.
+Static import checks and runtime module-count assertions run in existing CI.
+Timing measurements use pytest-benchmark and the separate Bencher reporting
+workflow. CodSpeed is no longer the active benchmark system.
 
 ### Static: Ruff `TID253`
 
@@ -1556,24 +1601,48 @@ legitimately need `requests` at module level (`conda/gateways/`,
 This catches regressions like the A1 bug at lint time — the same `ruff check`
 pass that already runs in pre-commit and CI.
 
-### Runtime: CodSpeed module-count budgets
+### Runtime: pytest module-count budgets
 
-The CodSpeed startup benchmarks ([PR #15850](https://github.com/conda/conda/pull/15850))
-include `test_module_count_budget` — a parametrized test that measures
-`len(sys.modules)` at five startup phases and fails if the count exceeds a
-per-phase budget:
+The startup tests introduced by
+[#15850](https://github.com/conda/conda/pull/15850) include
+`test_module_count_budget`, a parametrized subprocess test that measures
+`len(sys.modules)` at six startup phases. These are ordinary test assertions,
+independent of Bencher's timing comparisons. The current
+[`_MODULE_BUDGETS`](https://github.com/conda/conda/blob/03d0bb006aed9365500a15d7cb65cf6c4fda42c4/tests/cli/test_startup_benchmarks.py)
+values, checked on September 17, are:
 
 | Probe | Budget | What it measures |
 |---|---|---|
-| `import_main` | 150 | `from conda.cli.main import main` |
-| `import_context` | 500 | `+ from conda.base.context import context` |
-| `context_init` | 550 | `+ context.__init__()` |
-| `import_argparse` | 1050 | `+ from conda.cli.conda_argparse import generate_parser` |
-| `generate_parser` | 1200 | `+ generate_parser()` |
+| `import_main` | 450 | `from conda.cli.main import main` |
+| `import_context` | 700 | Import `main`, then `context` |
+| `import_argparse` | 1050 | `from conda.cli.conda_argparse import generate_parser` |
+| `generate_parser` | 1400 | Import `generate_parser`, then call it |
+| `full_startup` | 1000 | `main('--version')` with captured output |
+| `shell_hook` | 760 | `main_sourced('shell.posix', 'hook')` with captured output |
 
-The `import_argparse` and `generate_parser` budgets are intentionally loose
-(pre-A2/A3 values). Once [PR #15868](https://github.com/conda/conda/pull/15868)
-merges, they should be ratcheted down to ~150 and ~200 respectively.
+The `import_argparse` and `generate_parser` budgets still allow the eager
+pre-A2/A3 import counts. With [#15868](https://github.com/conda/conda/pull/15868)
+merged, lowering them is an outstanding follow-up. Measure the merged code
+across supported Python versions and CI environments before choosing limits.
+The earlier proposed limits of ~150 and ~200 have not been validated for the
+current dependency and plugin set.
+
+### Timing: pytest-benchmark and Bencher
+
+The `linux-benchmarks` job measures startup and other benchmark tests on
+Ubuntu 24.04 with Python 3.14. The `Track Benchmarks` workflow reports results
+to [Bencher](https://bencher.dev/perf/conda-tdj8rt90) through `conda/actions/bencher`.
+PR measurements compare the exact base and head on the same runner, using the
+head's dependencies, benchmark tests, and fixtures.
+
+PR comparisons are informational while the suite is stabilized. The reporter
+disables alerts for paired measurements and posts the neutral
+`Benchmark measurements (informational)` check. A neutral check does not prove
+unchanged performance. Branch histories retain statistical regression alerts.
+See conda's [benchmark documentation](https://github.com/conda/conda/blob/03d0bb006aed9365500a15d7cb65cf6c4fda42c4/docs/source/dev-guide/writing-tests/benchmarks.md)
+for the workflow, artifacts, comparison limits, and local commands. Historical
+CodSpeed instruction-count measurements in this report must not be presented
+as current Bencher results or compared directly with wall-clock timings.
 
 ### Local profiling
 
@@ -1583,7 +1652,7 @@ module counts across 6 probes with baseline comparison) is preserved as a
 for local profiling and ad-hoc investigations.
 
 > [!TIP]
-> Together, `TID253` (static) and CodSpeed module-count budgets (runtime)
+> Together, `TID253` (static) and pytest module-count budgets (runtime)
 > prevent the gradual "import creep" that brought conda to 836 modules at
 > startup, without requiring a custom CI workflow.
 
@@ -1600,7 +1669,7 @@ for local profiling and ad-hoc investigations.
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Deferred imports break conda functionality | Medium | Ruff TID253 + CodSpeed budgets + test suite catch regressions |
+| Deferred imports break conda functionality | Medium | Ruff TID253 + pytest module-count budgets + test suite catch regressions |
 | Third-party plugins incompatible | Low | `importlib.import_module()` is transparent to callers |
 | Performance varies across platforms | Medium | Benchmark on Linux/macOS/Windows in CI |
 
@@ -1616,7 +1685,7 @@ highest-impact fixes do not require Python 3.15.
 Twenty-five targeted changes (A1–A24, with A16 cancelled) using only standard
 Python patterns, with no new syntax or architectural changes. Full backward
 compatibility remains a merge requirement rather than a completed result for
-all three open PRs. Key results, measured with hyperfine:
+the two remaining PRs. Historical results, measured with hyperfine:
 
 | Command | Before | After Track A | Saved | Speedup | Method |
 |---|---|---|---|---|---|
@@ -1626,17 +1695,14 @@ all three open PRs. Key results, measured with hyperfine:
 | `conda run` (full Track A, stacked est.) | 352 ms | ~95–115 ms | ~−247 ms | ~3.1–3.7× | estimated |
 | Context init phase (A1) | 109 ms | 52 ms | −57 ms | 2.1× | measured |
 
-The largest individual wins are A6/A11 (skipping plugin loading for activate
-and run — saves 229–235 ms per invocation) and A2/A3 (lazy subcommand parser
-loading — saves 142 ms and 505 modules, which already eliminates most of the
-`plugins/types.py` import cost that was originally attributed to A22). The
-current A22 PR scope is smaller (~2 ms standalone, `deprecated.constant()` →
-`__getattr__`); full lazy loading of `plugins/types.py` would require PEP 810
-(Python 3.15+) to avoid the glibc heap corruption seen under coverage.py's C
-tracer. Stacked, Track A brings `conda run` from 352 ms to an estimated
-95–115 ms (3–3.5×). A1 (replacing `from requests.compat import json` with
-`import json`) saves 57 ms and 180 modules for every command with zero
-compatibility risk.
+The historical measurements show large potential savings from A6/A11
+(skipping plugin loading for activate and run) and A2/A3 (lazy parser loading).
+The April 21 A2/A3 comparison saved 481.5 ms and 801 modules in an isolated
+parser probe, while real-command timings were essentially flat. These
+measurements are not interchangeable. A22's standalone contribution was
+about 2 ms after accounting for overlap with A2/A3. The full Track A
+`conda run` estimate of 95–115 ms remains unverified against the merged code
+and still depends on the open A11 change.
 
 For solver-path commands (`conda install`, `conda update`), the runtime-scale
 optimizations (A18–A21) add significantly on top of startup savings. The April
@@ -1648,18 +1714,17 @@ independent comparison confirmed the performance direction at 1.64× faster
 initialization and 6.08× faster `dump()`, but no current memory saving or
 combined command total is claimed.
 
-Twenty-two PRs are merged and shipped in conda 26.7.0 (A1, A4, A5, A5b, A6,
+Twenty-two PRs shipped in conda 26.7.0 (A1, A4, A5, A5b, A6,
 A7, A8, A9, A10, A12, A13, A14, A15, A17, A18, A19a, A20a, A20b, A21, A22,
-A23, A24). Three open PRs remain, all mergeable and based on current `main`
-(`f79624e4a`). A2/A3 (`3cf12e63c4d16894a2fa5339c2db6da67f4a5972`)
-and A11 (`199111d66b888e8197f8b4d99a30a0073c326348`) are review required. A19b
-(`65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`) has changes requested because
-compatibility differences remain. Hosted checks are running on all three
-heads.
+A23, A24). A2/A3 is the 23rd merged PR, landed on September 17 and not yet
+released. A11 (`199111d66`) now conflicts with `main` and requires review,
+despite 94 passing checks on its existing head. A19b (`44bf76d73`) is mergeable
+with changes requested, a Windows integration timeout, and a failed
+`analyze` gate. Its compatibility fixes need re-review.
 
 A13 ([#15886](https://github.com/conda/conda/pull/15886)) speeds up
 `_expand_search_path` and `custom_expandvars` directly (~5.1× faster
-per call, ~2 ms per process, plus ×8 on CodSpeed's `test_context_init`
+per call, ~2 ms per process, plus a historical ×8 on CodSpeed's `test_context_init`
 bench and −30 to −60 ms on subcommand benches via the shared
 `custom_expandvars()` fast-path).
 
@@ -1668,10 +1733,10 @@ research, speculative work) live in the [Track C](track-c-future.md).
 Transaction-pipeline performance (verify, download, extract, link) is
 [Track B](track-b-transaction.md).
 
-Track A implementation is underway. Twenty-two PRs shipped in conda 26.7.0.
-The three current-main PRs are mergeable, A2/A3 and A11 are review required,
-and A19b has changes requested pending compatibility work. Hosted checks are
-running and are not yet green.
+The remaining work is to resolve A11's conflicts and review its hook behavior,
+finish A19b's compatibility review and CI follow-up, and measure startup on the
+merged parser before lowering its module budgets. Current performance tracking
+uses pytest-benchmark and Bencher. No new release target is committed.
 
 <div align="right"><a href="#contents">↑ Contents</a></div>
 
@@ -1681,6 +1746,7 @@ running and are not yet green.
 
 | Date | Change |
 |---|---|
+| 2026-09-17 | **A2/A3 [#15868](https://github.com/conda/conda/pull/15868) merged at 11:51 UTC, commit `03d0bb006a`, after @kenodegard approved the final head on September 16.** Live verification of all 25 Track A PRs confirms **23 merged and 2 open**. The first 22 shipped in 26.7.0, while A2/A3 is not yet released. A11 [#15883](https://github.com/conda/conda/pull/15883) at `199111d66` conflicts with `main` and requires review, with 94 passing checks on that head. A19b [#15916](https://github.com/conda/conda/pull/15916) at `44bf76d73` is mergeable with changes requested, 181 passing checks, a Windows PowerShell integration timeout, a failed `analyze` gate, and a neutral Bencher check. Recorded subsequent A19b compatibility fixes without treating the September 1 audit as current. Updated the merged parser description, current pytest module budgets, and Bencher guidance. Lowering parser budgets is now unblocked but still requires measurements across supported CI environments. No new performance figures or release target are claimed. |
 | 2026-09-01 | **The three remaining Track A PRs were rebased onto current `main` (`f79624e4a`), their news fragments moved to `releases/news/`, and their current claims rechecked.** A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable and review required at `3cf12e63c4d16894a2fa5339c2db6da67f4a5972`. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable and review required at `199111d66b888e8197f8b4d99a30a0073c326348`. A19b [#15916](https://github.com/conda/conda/pull/15916) is mergeable with changes requested at `65ee843df0c82fda16b7222023ad8b0ec8ecdc3d`. The A19b rebase preserved current-main `indexed_timestamp` behavior and added `IndexedTimestampField` as the ninth lazy legacy descriptor shim. Verification confirmed faster construction and `dump()` but found remaining dict-like methods, `Entity` helpers, package-type derivation, `Link` coercion, validation, `from_objects()`, late URL derivation, and required package-cache path differences. The April timing, scale, and memory tables remain as historical measurements and are marked not exactly reproducible. A September independent comparison measured 1.64× faster initialization and 6.08× faster `dump()`, while current memory savings remain unverified. Hosted checks are running, and no new release target is committed. |
 | 2026-08-12 | **The remaining Track A PRs were refreshed after conda 26.7.0 shipped.** All 22 merged Track A PRs are included in 26.7.0. A2/A3 [#15868](https://github.com/conda/conda/pull/15868), A11 [#15883](https://github.com/conda/conda/pull/15883), and A19b [#15916](https://github.com/conda/conda/pull/15916) were rebased onto current `main` without conflicts and remain mergeable. Feedback is applied on all three, and fresh CI is running. A2/A3 and A11 await reviewer decisions. A19b still carries Jaime's changes-requested review pending re-review of the compatibility fixes. No new release target is committed. |
 | 2026-07-20 | **Open Track A PR review completed.** The merged count remains **22 of 25**. A2/A3 [#15868](https://github.com/conda/conda/pull/15868) is mergeable with green required checks and six unresolved review threads covering deprecation dates, release-note wording, built-in command registration, and duplicated help text. A11 [#15883](https://github.com/conda/conda/pull/15883) is mergeable with green required checks and needs a decision on which commands may skip pre- and post-command plugin hooks. A19b [#15916](https://github.com/conda/conda/pull/15916) has changes requested because required-field validation, type validation, unknown-keyword handling, timestamp fallback, cached identity invalidation, and documentation compatibility are not yet preserved. None of the three can merge without follow-up. |
